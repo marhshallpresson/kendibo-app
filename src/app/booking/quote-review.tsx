@@ -125,7 +125,7 @@ export default function QuoteReviewScreen() {
         <View style={[styles.selectedCard, { backgroundColor: colors.primaryLight }]}>
           <Text style={[styles.selectedTitle, { color: colors.textPrimary, fontFamily: fonts.bold }]}>Selected Services</Text>
           <View style={styles.selectedRow}>
-            <Image source={{ uri: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e' }} style={styles.selectedThumb} />
+            <Image source={resolveImage('electrician')} style={styles.selectedThumb} />
             <View style={styles.selectedMeta}>
               <Text style={[styles.selectedService, { color: colors.textPrimary, fontFamily: fonts.bold }]} numberOfLines={2}>
                 {params.equipment || 'AC Inverter System'}

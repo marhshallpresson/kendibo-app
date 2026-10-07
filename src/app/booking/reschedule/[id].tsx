@@ -98,7 +98,7 @@ export default function RescheduleScreen() {
         {/* Service snapshot (misc: Bookings - Detail Page) */}
         <View style={[styles.serviceCard, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
           {booking.service?.imageUrl ? (
-            <Image source={{ uri: booking.service.imageUrl }} style={styles.serviceThumb} />
+            <Image source={resolveImage(booking.service.imageUrl)} style={styles.serviceThumb} />
           ) : (
             <View style={[styles.serviceThumb, { backgroundColor: colors.primaryLight }]} />
           )}

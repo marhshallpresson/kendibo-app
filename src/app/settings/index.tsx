@@ -22,6 +22,7 @@ import {
   ChevronRight,
   Check,
   Copy,
+  UserRound,
 } from 'lucide-react-native';
 import { useAppTheme } from '../_layout';
 import { spacing, radii, fonts } from '../../constants/theme';
@@ -89,6 +90,11 @@ export default function SettingsIndexScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.menuList}>
+          {renderRow({
+            icon: <UserRound size={22} color={colors.textPrimary} />,
+            label: 'Edit profile',
+            onPress: () => router.push('/settings/edit-profile'),
+          })}
           {renderRow({
             icon: <Bell size={22} color={colors.textPrimary} />,
             label: 'Notification',

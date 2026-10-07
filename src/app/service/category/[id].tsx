@@ -187,7 +187,7 @@ export default function CategoryScreen() {
                 >
                   {/* Tinted thumb behind Unsplash photo (mockup 38: rounded square left) */}
                   <View style={[styles.thumbWrap, { backgroundColor: tint }]}>
-                    <Image source={{ uri: service.imageUrl }} style={styles.thumb} />
+                    <Image source={resolveImage(service.imageUrl)} style={styles.thumb} />
                   </View>
                   <View style={styles.cardMain}>
                     <Text style={[styles.providerLine, { color: colors.textMuted, fontFamily: fonts.regular }]} numberOfLines={1}>

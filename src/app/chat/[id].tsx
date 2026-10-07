@@ -237,7 +237,7 @@ export default function ChatDetailScreen() {
       {/* Image attachment preview (if selected) */}
       {attachedImage && (
         <View style={styles.attachmentBar}>
-          <Image source={{ uri: attachedImage }} style={styles.attachmentThumbnail} />
+          <Image source={resolveImage(attachedImage)} style={styles.attachmentThumbnail} />
           <Text style={styles.attachmentLabel}>Photo attached</Text>
           <Pressable onPress={() => setAttachedImage(null)} style={styles.removeAttachment}>
             <X size={16} color={colors.textPrimary} />

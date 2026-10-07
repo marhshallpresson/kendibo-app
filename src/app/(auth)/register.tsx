@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useWatchupScreen } from '../../hooks/useWatchupScreen';
 import {
   View,
   Text,
@@ -23,6 +24,8 @@ import BrandLogo from '../../components/ui/BrandLogo';
 import GoogleIcon from '../../components/ui/GoogleIcon';
 
 export default function RegisterScreen() {
+  useWatchupScreen('AuthRegister');
+
   const router = useRouter();
   const requestOtp = useAuthStore((s) => s.requestOtp);
   const { colors } = useAppTheme();

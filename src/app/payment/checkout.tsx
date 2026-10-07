@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useWatchupScreen } from '../../hooks/useWatchupScreen';
 import {
   View,
   Text,
@@ -95,6 +96,8 @@ function ApplePayMark({ color }: { color: string }) {
 }
 
 export default function CheckoutScreen() {
+  useWatchupScreen('PaymentCheckout');
+
   const router = useRouter();
   const params = useLocalSearchParams<{
     totalKobo?: string;

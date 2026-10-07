@@ -1,8 +1,18 @@
+env: load .env
+env: export EXPO_PUBLIC_API_URL
 Starting project at C:\Users\Mobot685\Projects\Homes app\kendibo-app
 Using src/app as the root directory for Expo Router.
 Starting Metro Bundler
 
-Waiting on http://localhost:8081
-
-1 package may need updating. Run npx expo install --check for details.
-Logs for your project will appear below.
+Error: listen EADDRINUSE: address already in use :::8081
+Error: listen EADDRINUSE: address already in use :::8081
+    at Server.setupListenHandle [as _listen2] (node:net:2009:16)
+    at listenInCluster (node:net:2066:12)
+    at Server.listen (node:net:2171:7)
+    at C:\Users\Mobot685\Projects\Homes app\kendibo-app\node_modules\@expo\cli\build\src\start\server\metro\runServer-fork.js:144:20
+    at new Promise (<anonymous>)
+    at runServer (C:\Users\Mobot685\Projects\Homes app\kendibo-app\node_modules\@expo\cli\build\src\start\server\metro\runServer-fork.js:140:12)
+    at runNextTicks (node:internal/process/task_queues:65:5)
+    at process.processTimers (node:internal/timers:538:9)
+    at async replaceMetroFileMap (C:\Users\Mobot685\Projects\Homes app\kendibo-app\node_modules\@expo\cli\build\src\start\server\metro\createFileMap-fork.js:191:20)
+    at async instantiateMetroAsync (C:\Users\Mobot685\Projects\Homes app\kendibo-app\node_modules\@expo\cli\build\src\start\server\metro\instantiateMetro.js:401:51)

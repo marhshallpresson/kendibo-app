@@ -1,8 +1,18 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { API_BASE_URL } from '../constants/config';
+import { watchup } from '../services/watchup';
 import { Redirect } from 'expo-router';
 import { useAuthStore } from '../stores';
 
 export default function EntryRedirect() {
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/v1/config/flags`)
+      .then(res => res.json())
+      .then(flags => {
+        try { watchup.setContext({ live_flags: flags }); } catch {}
+      })
+      .catch(() => {});
+  }, []);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
 

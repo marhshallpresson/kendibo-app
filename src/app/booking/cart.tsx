@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useWatchupScreen } from '../../hooks/useWatchupScreen';
 import { View, Text, ScrollView, Pressable, StyleSheet, SafeAreaView, Platform, Alert, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
@@ -30,6 +31,8 @@ const VALID_PROMOS: Record<string, { desc: string; calculate: (subtotal: number)
 };
 
 export default function BookingCartScreen() {
+  useWatchupScreen('BookingCart');
+
   const router = useRouter();
   const searchParams = useLocalSearchParams<{
     scheduledDate?: string;
@@ -169,7 +172,7 @@ export default function BookingCartScreen() {
           <Text style={[styles.selectedTitle, { color: colors.textPrimary, fontFamily: fonts.bold }]}>Selected Services</Text>
           {items.map((cartItem) => (
             <View key={cartItem.service.id} style={styles.selectedRow}>
-              <Image source={{ uri: cartItem.service.imageUrl }} style={styles.selectedThumb} />
+              <Image source={resolveImage(cartItem.service.imageUrl)} style={styles.selectedThumb} />
               <View style={styles.selectedMeta}>
                 <Text style={[styles.selectedName, { color: colors.textPrimary, fontFamily: fonts.bold }]} numberOfLines={1}>
                   {cartItem.service.name}

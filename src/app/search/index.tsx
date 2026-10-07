@@ -233,7 +233,7 @@ export default function SearchScreen() {
                       style={[styles.resultCard, { backgroundColor: colors.surface }]}
                       onPress={() => router.push(`/service/${service.id}`)}
                     >
-                      <Image source={{ uri: service.imageUrl }} style={styles.resultImage} />
+                      <Image source={resolveImage(service.imageUrl)} style={styles.resultImage} />
                       <View style={styles.resultDetails}>
                         <Text
                           style={[styles.resultProvider, { color: colors.textSecondary }]}

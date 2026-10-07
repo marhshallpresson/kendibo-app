@@ -423,7 +423,7 @@ export default function HomeFeedScreen() {
                   style={[styles.serviceCard, { backgroundColor: colors.surface }]}
                   onPress={() => router.push(`/service/${service.id}`)}
                 >
-                  <Image source={{ uri: service.imageUrl }} style={styles.serviceImage} />
+                  <Image source={resolveImage(service.imageUrl)} style={styles.serviceImage} />
 
                   <View style={styles.serviceDetails}>
                     <Text

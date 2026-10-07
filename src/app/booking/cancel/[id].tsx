@@ -88,7 +88,7 @@ export default function CancelBookingScreen() {
         {/* Misc Cancel Booking: rounded service card */}
         <View style={[styles.serviceCard, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
           {booking.service?.imageUrl ? (
-            <Image source={{ uri: booking.service.imageUrl }} style={styles.serviceThumb} />
+            <Image source={resolveImage(booking.service.imageUrl)} style={styles.serviceThumb} />
           ) : (
             <View style={[styles.serviceThumb, { backgroundColor: colors.primaryLight }]} />
           )}

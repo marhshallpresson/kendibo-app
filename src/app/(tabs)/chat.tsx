@@ -162,7 +162,7 @@ export default function ChatScreen() {
                 style={styles.threadRow}
               >
                 {thread.avatarUrl ? (
-                  <Image source={{ uri: thread.avatarUrl }} style={styles.avatar} />
+                  <Image source={resolveImage(thread.avatarUrl)} style={styles.avatar} />
                 ) : (
                   <View style={[styles.avatar, { backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' }]}>
                     <Text style={{ color: colors.primary, fontWeight: '700' }}>
@@ -207,7 +207,7 @@ export default function ChatScreen() {
             const MetaIcon = meta.Icon;
             return (
               <View key={call.id} style={styles.callRow}>
-                <Image source={{ uri: call.avatarUrl }} style={styles.avatar} />
+                <Image source={resolveImage(call.avatarUrl)} style={styles.avatar} />
                 <View style={styles.threadMid}>
                   <Text style={[styles.threadName, { color: colors.textPrimary }]} numberOfLines={1}>
                     {call.technicianName}

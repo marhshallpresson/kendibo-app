@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useWatchupScreen } from '../../hooks/useWatchupScreen';
 import {
   View,
   Text,
@@ -23,6 +24,8 @@ import BrandLogo from '../../components/ui/BrandLogo';
 import GoogleIcon from '../../components/ui/GoogleIcon';
 
 export default function LoginScreen() {
+  useWatchupScreen('AuthLogin');
+
   const router = useRouter();
   const requestOtp = useAuthStore((s) => s.requestOtp);
   const { colors } = useAppTheme();
@@ -428,13 +431,7 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.socialRow}>
-            <TouchableOpacity
-              style={styles.socialBtn}
-              onPress={handleSocialLogin}
-              accessibilityLabel="Continue with Facebook"
-            >
-              <Text style={[styles.socialIconText, { color: colors.primary }]}>f</Text>
-            </TouchableOpacity>
+            
 
             <TouchableOpacity
               style={styles.socialBtn}
@@ -444,13 +441,7 @@ export default function LoginScreen() {
               <GoogleIcon size={22} />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.socialBtn}
-              onPress={handleSocialLogin}
-              accessibilityLabel="Continue with Apple"
-            >
-              <Text style={styles.socialIconText}></Text>
-            </TouchableOpacity>
+      
           </View>
 
           <View style={styles.footerRow}>

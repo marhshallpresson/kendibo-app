@@ -75,19 +75,7 @@ export default function BookingAddressScreen() {
   };
 
   const handleOpenAddModal = () => {
-    setEditingAddressId(null);
-    setLabel('Home');
-    setStreet('');
-    setHouseNumber('');
-    setEstate('');
-    setFloor('');
-    setLandmark('');
-    setGateInstructions('');
-    setContactPerson('');
-    setContactPhone('');
-    setIsDefault(false);
-    setFormError('');
-    setIsModalOpen(true);
+    router.push('/booking/add-location');
   };
 
   const handleOpenEditModal = (addr: Address) => {

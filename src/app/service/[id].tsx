@@ -120,7 +120,7 @@ export default function ServiceDetailScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Mockup 45: full-bleed hero with floating actions + dots */}
         <View style={styles.heroContainer}>
-          <Image source={{ uri: service.imageUrl }} style={styles.heroImage} />
+          <Image source={resolveImage(service.imageUrl)} style={styles.heroImage} />
           <View style={styles.heroOverlay}>
             <Pressable
               style={[styles.floatingIconBtn, { backgroundColor: colors.surface }]}

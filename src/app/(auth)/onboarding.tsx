@@ -11,6 +11,8 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Alert,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -21,8 +23,6 @@ import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import BrandLogo from '../../components/ui/BrandLogo';
 import GoogleIcon from '../../components/ui/GoogleIcon';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface Slide {
   id: string;
@@ -62,6 +62,10 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const setOnboardingCompleted = useAuthStore((s) => s.setOnboardingCompleted);
   const { colors } = useAppTheme();
+  const windowDimensions = useWindowDimensions();
+  // Handle web wrapper max-width
+  const isWeb = Platform.OS === 'web';
+  const SCREEN_WIDTH = isWeb ? Math.min(windowDimensions.width, 480) : windowDimensions.width;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showLetsIn, setShowLetsIn] = useState(false);
   const flatListRef = useRef<FlatList>(null);
@@ -303,7 +307,7 @@ export default function OnboardingScreen() {
           color: colors.primary,
         },
       }),
-    [colors]
+    [colors, SCREEN_WIDTH]
   );
 
   if (showLetsIn) {
@@ -393,7 +397,7 @@ export default function OnboardingScreen() {
           <View style={styles.slide}>
             <View style={styles.illustrationRing}>
               <Image
-                source={{ uri: item.image }}
+                source={resolveImage(item.image)}
                 style={styles.illustrationPhoto}
                 accessibilityLabel={item.title}
               />
@@ -433,3 +437,4 @@ export default function OnboardingScreen() {
     </SafeAreaView>
   );
 }
+

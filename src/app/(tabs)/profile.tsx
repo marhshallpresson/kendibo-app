@@ -95,7 +95,7 @@ export default function ProfileScreen() {
               style={[styles.editBadge, { backgroundColor: colors.primary }]}
               accessibilityRole="button"
               accessibilityLabel="Edit profile photo"
-              onPress={() => router.push('/settings')}
+              onPress={() => router.push('/settings/edit-profile')}
             >
               <Pencil size={13} color="#FFFFFF" />
             </Pressable>
