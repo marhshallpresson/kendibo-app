@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
+import { resolveImage } from '../../constants/images';
   View,
   Text,
   StyleSheet,
@@ -23,6 +24,7 @@ import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import BrandLogo from '../../components/ui/BrandLogo';
 import GoogleIcon from '../../components/ui/GoogleIcon';
+import { resolveImage } from '../../constants/images';
 
 interface Slide {
   id: string;
@@ -437,4 +439,5 @@ export default function OnboardingScreen() {
     </SafeAreaView>
   );
 }
+
 

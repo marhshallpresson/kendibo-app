@@ -3,6 +3,7 @@ import { useWatchupScreen } from '../../hooks/useWatchupScreen';
 import { View, Text, ScrollView, Pressable, StyleSheet, SafeAreaView, Platform, Alert, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import {
+import { resolveImage } from '../../constants/images';
   ArrowLeft,
   Trash2,
   Plus,
@@ -23,6 +24,7 @@ import { radii, spacing, fonts, shadows } from '../../constants/theme';
 import { useCartStore } from '../../stores/cartStore';
 import { useLocationStore } from '../../stores/locationStore';
 import { formatKoboToNaira, calculateVatKobo } from '../../utils/currency';
+import { resolveImage } from '../../constants/images';
 
 const VALID_PROMOS: Record<string, { desc: string; calculate: (subtotal: number) => number }> = {
   KENDIBO30: { desc: '30% off up to ₦5,000', calculate: (subtotal) => Math.min(500000, Math.round(subtotal * 0.3)) },
@@ -447,3 +449,4 @@ const styles = StyleSheet.create({
   },
   halfBtn: { flex: 1 },
 });
+

@@ -8,6 +8,7 @@ import { spacing, fonts, shadows } from '../../constants/theme';
 import { formatKoboToNaira, calculateVatKobo } from '../../utils/currency';
 import { useCartStore } from '../../stores/cartStore';
 import { useLocationStore } from '../../stores/locationStore';
+import { resolveImage } from '../../constants/images';
 
 interface QuoteItemData {
   id: string;
@@ -370,3 +371,4 @@ const styles = StyleSheet.create({
   rejectBtn: { flex: 1 },
   acceptBtn: { flex: 1.5 },
 });
+
