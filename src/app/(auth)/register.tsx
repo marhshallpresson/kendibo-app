@@ -199,9 +199,30 @@ export default function RegisterScreen() {
           flexShrink: 1,
         },
         termsLink: {
-          fontFamily: fonts.semiBold,
-          color: colors.primary,
-        },
+        fontFamily: fonts.semiBold,
+        color: colors.primary,
+      },
+      roleCard: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: colors.borderSubtle,
+        borderRadius: radii.md,
+        padding: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: colors.surfaceCard,
+      },
+      roleCardText: {
+        fontFamily: fonts.medium,
+        fontSize: 15,
+        color: colors.textSecondary,
+      },
+      label: {
+        fontFamily: fonts.medium,
+        fontSize: 14,
+        color: colors.textSecondary,
+        marginBottom: 8,
+      },
         signUpButton: {
           marginTop: spacing.md,
         },
@@ -364,7 +385,7 @@ export default function RegisterScreen() {
             />
 
                         <View style={{ marginBottom: 20 }}>
-              <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>How do you want to use this app?</Text>
+              <Text style={[styles.label, { color: colors.textPrimary }]}>How do you want to use this app?</Text>
               <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
                 <Pressable
                   onPress={() => setRole('customer')}
@@ -453,5 +474,7 @@ export default function RegisterScreen() {
     </SafeAreaView>
   );
 }
+
+
 
 
