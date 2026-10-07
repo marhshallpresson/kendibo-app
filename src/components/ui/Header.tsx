@@ -15,6 +15,8 @@ export interface HeaderProps {
   title: string;
   subtitle?: string;
   onBack?: () => void;
+  /** Hide the back affordance (e.g. tab roots, multi-step wizards). */
+  hideBackButton?: boolean;
   rightAction?: React.ReactNode;
   transparent?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -25,6 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
   title,
   subtitle,
   onBack,
+  hideBackButton = false,
   rightAction,
   transparent = false,
   style,
@@ -43,7 +46,7 @@ export const Header: React.FC<HeaderProps> = ({
       testID={testID}
     >
       <View style={styles.leftContainer}>
-        {onBack && (
+        {!hideBackButton && onBack && (
           <Pressable
             onPress={onBack}
             style={({ pressed }) => [
