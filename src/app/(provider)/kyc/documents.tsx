@@ -8,7 +8,6 @@ import { Header, Button } from '../../../components/ui';
 import { useAppTheme } from '../../_layout';
 import { fonts, spacing, radii } from '../../../constants/theme';
 import { useKycStore } from '../../../stores/kycStore';
-import { fileManager } from '../../../services/fileManager';
 
 export default function KycDocumentsScreen() {
   const router = useRouter();
@@ -24,12 +23,7 @@ export default function KycDocumentsScreen() {
 
     if (!result.canceled && result.assets[0]) {
       const uri = result.assets[0].uri;
-      
-      // Cache the file locally via our new file manager
-      const filename = uri.split('/').pop() || `${key}.jpg`;
-      const cachedUri = await fileManager.cacheFile(uri, filename);
-      
-      setDocuments({ [key]: cachedUri });
+      setDocuments({ [key]: uri });
     }
   };
 
@@ -155,3 +149,4 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
 });
+

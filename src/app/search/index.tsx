@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import {
 import { resolveImage } from '../../constants/images';
+import {
   View,
   Text,
   TextInput,
@@ -11,7 +11,6 @@ import { resolveImage } from '../../constants/images';
 } from 'react-native';
 import { router } from 'expo-router';
 import {
-import { resolveImage } from '../../constants/images';
   ArrowLeft,
   Search,
   X,
@@ -27,7 +26,6 @@ import { formatKoboToNaira } from '../../utils/currency';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { Service, Category } from '../../types';
-import { resolveImage } from '../../constants/images';
 
 type SortOption = 'recommended' | 'highest_rated' | 'price_low_high' | 'price_high_low' | 'most_popular';
 
@@ -781,4 +779,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bold,
   },
 });
+
 

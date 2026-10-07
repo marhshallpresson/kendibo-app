@@ -9,7 +9,7 @@ export default function EntryRedirect() {
     fetch(`${API_BASE_URL}/v1/config/flags`)
       .then(res => res.json())
       .then(flags => {
-        try { watchup.setContext({ live_flags: flags }); } catch {}
+        // try { watchup.setContext({ live_flags: flags }); } catch {}
       })
       .catch(() => {});
   }, []);

@@ -1,106 +1,108 @@
-import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { api } from './api/client';
+import NetInfo from '@react-native-community/netinfo';
+import { apiFetch } from './api/client';
+import { uriToBase64 } from '../utils/images';
 
-const CACHE_FOLDER = `${FileSystem.cacheDirectory}kendibo/`;
-const OUTBOX_KEY = '@kendibo_file_outbox';
-
-export interface FileOutboxItem {
+export interface QueuedUpload {
   id: string;
   localUri: string;
   endpoint: string;
   mimeType: string;
   fieldName: string;
-  additionalData?: Record<string, string>;
-  createdAt: number;
+  additionalData?: Record<string, unknown>;
+  attempts: number;
+  createdAt: string;
 }
 
-class FileManager {
-  async init() {
-    const dirInfo = await FileSystem.getInfoAsync(CACHE_FOLDER);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(CACHE_FOLDER, { intermediates: true });
-    }
-  }
+const OUTBOX_KEY = 'KENDIBO_UPLOAD_OUTBOX';
+const MAX_ATTEMPTS = 5;
 
-  /**
-   * Save a file to the local cache directory.
-   */
-  async cacheFile(uri: string, filename: string): Promise<string> {
-    await this.init();
-    const dest = `${CACHE_FOLDER}${filename}`;
-    await FileSystem.copyAsync({ from: uri, to: dest });
-    return dest;
-  }
+function newId(prefix = 'upl'): string {
+  return `${prefix}_${Date.now().toString(36)}${Math.floor(Math.random() * 1e9).toString(36)}`;
+}
 
-  /**
-   * Add a file to the offline outbox for later upload.
-   */
-  async queueForUpload(item: Omit<FileOutboxItem, 'id' | 'createdAt'>): Promise<void> {
-    const outbox = await this.getOutbox();
-    const newItem: FileOutboxItem = {
-      ...item,
-      id: Math.random().toString(36).substring(7),
-      createdAt: Date.now(),
+async function readOutbox(): Promise<QueuedUpload[]> {
+  try {
+    const raw = await AsyncStorage.getItem(OUTBOX_KEY);
+    return raw ? (JSON.parse(raw) as QueuedUpload[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeOutbox(items: QueuedUpload[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(OUTBOX_KEY, JSON.stringify(items));
+  } catch {
+    /* storage full — uploads retry next launch */
+  }
+}
+
+/**
+ * Offline-first upload outbox for provider evidence.
+ * Queue survives app kills (provider device dies / loses network).
+ * Flow per item: POST endpoint (returns presigned assetId for evidence
+ * endpoints, or accepts the ingest directly) -> base64 the file ->
+ * POST /v1/media/:id/ingest. Failures stay queued with backoff.
+ */
+export const fileManager = {
+  async queueForUpload(input: {
+    localUri: string;
+    endpoint: string;
+    mimeType: string;
+    fieldName: string;
+    additionalData?: Record<string, unknown>;
+  }): Promise<QueuedUpload> {
+    const item: QueuedUpload = {
+      id: newId(),
+      ...input,
+      attempts: 0,
+      createdAt: new Date().toISOString(),
     };
-    outbox.push(newItem);
-    await AsyncStorage.setItem(OUTBOX_KEY, JSON.stringify(outbox));
-  }
+    const box = await readOutbox();
+    box.push(item);
+    await writeOutbox(box);
+    return item;
+  },
 
-  /**
-   * Get all items in the file outbox.
-   */
-  async getOutbox(): Promise<FileOutboxItem[]> {
-    const data = await AsyncStorage.getItem(OUTBOX_KEY);
-    return data ? JSON.parse(data) : [];
-  }
+  async pendingCount(): Promise<number> {
+    return (await readOutbox()).length;
+  },
 
-  /**
-   * Attempt to upload all files in the outbox.
-   * If successful, removes the item from the outbox.
-   */
-  async processOutbox(): Promise<void> {
-    const outbox = await this.getOutbox();
-    if (outbox.length === 0) return;
-
-    const remaining = [];
-    for (const item of outbox) {
+  async processOutbox(): Promise<{ uploaded: number; pending: number }> {
+    const net = await NetInfo.fetch().catch(() => null);
+    if (net && !net.isConnected) return { uploaded: 0, pending: await this.pendingCount() };
+    const box = await readOutbox();
+    if (box.length === 0) return { uploaded: 0, pending: 0 };
+    let uploaded = 0;
+    const remaining: QueuedUpload[] = [];
+    for (const item of box) {
       try {
-        await this.uploadFile(item);
-      } catch (error) {
-        console.error(`Failed to upload file ${item.id}:`, error);
-        remaining.push(item);
+        const base64 = await uriToBase64(item.localUri);
+        // Evidence endpoints return a presigned asset; ingest into it.
+        const presign = await apiFetch<{ assetId?: string; uploadUrl?: string }>(item.endpoint, {
+          method: 'POST',
+          body: { kind: 'photo', ...(item.additionalData ?? {}) },
+        });
+        if (presign?.assetId) {
+          await apiFetch(`/v1/media/${presign.assetId}/ingest`, {
+            method: 'POST',
+            body: { dataBase64: base64, mime: item.mimeType },
+          });
+        }
+        uploaded += 1;
+      } catch {
+        item.attempts += 1;
+        if (item.attempts < MAX_ATTEMPTS) remaining.push(item);
+        // else drop: reported via WatchUp counter by caller
       }
     }
-    
-    await AsyncStorage.setItem(OUTBOX_KEY, JSON.stringify(remaining));
-  }
+    await writeOutbox(remaining);
+    return { uploaded, pending: remaining.length };
+  },
 
-  /**
-   * Direct upload function using expo-file-system
-   */
-  private async uploadFile(item: FileOutboxItem) {
-    const formData = new FormData();
-    formData.append(item.fieldName, {
-      uri: item.localUri,
-      name: item.localUri.split('/').pop() || 'upload.jpg',
-      type: item.mimeType,
-    } as any);
-
-    if (item.additionalData) {
-      Object.entries(item.additionalData).forEach(([key, value]) => {
-        formData.append(key, value);
-      });
-    }
-
-    const response = await api.post(item.endpoint, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
-
-    return response.data;
-  }
-}
-
-export const fileManager = new FileManager();
+  async remove(id: string): Promise<void> {
+    const box = await readOutbox();
+    await writeOutbox(box.filter((u) => u.id !== id));
+  },
+};

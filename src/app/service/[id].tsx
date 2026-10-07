@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { resolveImage } from '../../constants/images';
 import { View, Text, ScrollView, StyleSheet, Pressable, Image, Share } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import {
@@ -526,3 +527,4 @@ const styles = StyleSheet.create({
   bookNowBtnText: { color: '#FFFFFF', fontSize: 15, textAlign: 'center' },
   bookNowSub: { color: 'rgba(255,255,255,0.85)', fontSize: 12, textAlign: 'center' },
 });
+

@@ -275,7 +275,6 @@ class WatchupRN {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${this.apiKey}`,
               'X-Api-Key': this.apiKey,
-              'Idempotency-Key': newId(),
             },
             body,
             signal: ctrl.signal,
@@ -309,7 +308,7 @@ export const watchup = new WatchupRN();
 /** Call once at app boot (before rendering providers that may throw). */
 export function initWatchup(): void {
   watchup.configure();
-  const ErrorUtils = (global as unknown as { ErrorUtils?: { setGlobalHandler: (fn: (e: unknown) => void) => void } }).ErrorUtils;
+  const ErrorUtils = (globalThis as unknown as { ErrorUtils?: { setGlobalHandler: (fn: (e: unknown) => void) => void } }).ErrorUtils;
   try {
     ErrorUtils?.setGlobalHandler((err) => {
       watchup.captureException(err, { source: 'globalHandler' });
@@ -324,8 +323,17 @@ export function initWatchup(): void {
   } catch {
     /* ignore */
   }
-  setInterval(() => {
+  const timer = setInterval(() => {
     void watchup.flush();
     void watchup.refreshFlags();
-  }, 30000).unref?.();
+  }, 30000);
+  const t = timer as unknown as { unref?: () => void };
+  try {
+    t.unref?.();
+  } catch {
+    /* browsers have no unref */
+  }
 }
+
+
+

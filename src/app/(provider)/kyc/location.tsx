@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
-import { MapPin } from 'lucide-react-native';
 import { Header, Button, Input } from '../../../components/ui';
 import { useAppTheme } from '../../_layout';
 import { fonts, spacing, radii } from '../../../constants/theme';
@@ -15,8 +14,8 @@ export default function KycLocationScreen() {
   const { location, setLocation } = useKycStore();
   
   const [region, setRegion] = useState({
-    latitude: location.latitude || 40.7128,
-    longitude: location.longitude || -74.0060,
+    latitude: location.latitude || 9.06,
+    longitude: location.longitude || 7.49,
     latitudeDelta: 0.1,
     longitudeDelta: 0.1,
   });
@@ -37,27 +36,20 @@ export default function KycLocationScreen() {
       <Header title="Service Area" onBack={() => router.back()} />
       
       <View style={styles.mapContainer}>
-        {Platform.OS === 'web' ? (
-          <View style={[styles.webMapFallback, { backgroundColor: colors.primaryLight }]}>
-            <Text style={{ color: colors.primary, fontFamily: fonts.bold }}>Map View</Text>
-            <MapPin size={40} color={colors.primary} />
-          </View>
-        ) : (
-          <MapView
-            style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            region={region}
-            onRegionChangeComplete={setRegion}
-          >
-            <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} />
-            <Circle
-              center={{ latitude: region.latitude, longitude: region.longitude }}
-              radius={(parseFloat(radiusStr) || 10) * 1000} // km to meters
-              fillColor="rgba(84, 51, 235, 0.2)"
-              strokeColor="rgba(84, 51, 235, 0.5)"
-            />
-          </MapView>
-        )}
+        <MapView
+          style={styles.map}
+          provider={PROVIDER_GOOGLE}
+          region={region}
+          onRegionChangeComplete={setRegion}
+        >
+          <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} />
+          <Circle
+            center={{ latitude: region.latitude, longitude: region.longitude }}
+            radius={(parseFloat(radiusStr) || 10) * 1000} // km to meters
+            fillColor="rgba(84, 51, 235, 0.2)"
+            strokeColor="rgba(84, 51, 235, 0.5)"
+          />
+        </MapView>
       </View>
 
       <View style={[styles.bottomCard, { backgroundColor: colors.surface }]}>
@@ -104,8 +96,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   bottomCard: {
-    borderTopLeftRadius: radii.xxl,
-    borderTopRightRadius: radii.xxl,
+    borderTopLeftRadius: radii.modalSheet,
+    borderTopRightRadius: radii.modalSheet,
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.xl,
     paddingTop: spacing.lg,
@@ -131,3 +123,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
 });
+

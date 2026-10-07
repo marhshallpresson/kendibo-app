@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import {
 import { resolveImage } from '../../constants/images';
+import {
   View,
   Text,
   StyleSheet,
@@ -20,7 +20,6 @@ import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import { pickEvidence, uriToBase64 } from '../../utils/images';
 import { apiFetch } from '../../services/api/client';
-import { resolveImage } from '../../constants/images';
 
 /**
  * Fill Your Profile (onboarding) — mirrors the reference design:
@@ -153,4 +152,5 @@ const styles = StyleSheet.create({
   addressText: { fontSize: 14 },
   error: { fontSize: 13, textAlign: 'center' },
 });
+
 

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { resolveImage } from '../../constants/images';
 import {
   View,
   Text,
@@ -567,3 +568,4 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
   },
 });
+

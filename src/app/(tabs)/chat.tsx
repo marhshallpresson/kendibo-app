@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import {
 import { resolveImage } from '../../constants/images';
+import {
   View,
   Text,
   StyleSheet,
@@ -11,7 +11,6 @@ import { resolveImage } from '../../constants/images';
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
-import { resolveImage } from '../../constants/images';
   Search,
   SlidersHorizontal,
   Phone,
@@ -24,7 +23,6 @@ import { useAppTheme } from '../_layout';
 import { spacing, radii, fonts } from '../../constants/theme';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useBookings } from '../../services/queryClient';
-import { resolveImage } from '../../constants/images';
 
 export interface ChatThreadItem {
   id: string;
@@ -411,4 +409,5 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
 });
+
 

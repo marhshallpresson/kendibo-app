@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import NetInfo from '@react-native-community/netinfo';
-import { fileManager } from '../services/fileManager';
 
 export function useNetworkStatus() {
   const [isConnected, setIsConnected] = useState<boolean | null>(true);
@@ -13,11 +12,6 @@ export function useNetworkStatus() {
 
       setIsConnected(currentlyConnected);
       setIsInternetReachable(currentlyReachable);
-
-      // If we just regained connection, try to process the outbox
-      if (currentlyConnected && currentlyReachable) {
-        fileManager.processOutbox().catch(console.error);
-      }
     });
 
     return () => {
@@ -31,3 +25,4 @@ export function useNetworkStatus() {
     isOffline: isConnected === false || isInternetReachable === false,
   };
 }
+

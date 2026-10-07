@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { resolveImage } from '../../constants/images';
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, Platform, Alert, Pressable, Image } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, ShieldCheck, Lock, UserCheck, AlertTriangle, ChevronDown, Calendar, Clock, MapPin } from 'lucide-react-native';
@@ -8,7 +9,6 @@ import { spacing, fonts, shadows } from '../../constants/theme';
 import { formatKoboToNaira, calculateVatKobo } from '../../utils/currency';
 import { useCartStore } from '../../stores/cartStore';
 import { useLocationStore } from '../../stores/locationStore';
-import { resolveImage } from '../../constants/images';
 
 interface QuoteItemData {
   id: string;
@@ -371,4 +371,5 @@ const styles = StyleSheet.create({
   rejectBtn: { flex: 1 },
   acceptBtn: { flex: 1.5 },
 });
+
 

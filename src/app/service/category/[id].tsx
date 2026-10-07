@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { resolveImage } from '../../../constants/images';
 import { View, Text, ScrollView, StyleSheet, Pressable, Image } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import {
@@ -423,3 +424,4 @@ const styles = StyleSheet.create({
   },
   checkoutBtnText: { color: '#FFFFFF', fontSize: 14 },
 });
+

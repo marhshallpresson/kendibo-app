@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { resolveImage } from '../../../constants/images';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Calendar, Clock, Info, CalendarCheck, X } from 'lucide-react-native';
@@ -379,3 +380,4 @@ const styles = StyleSheet.create({
   newSlotTime: { fontSize: 13 },
   modalCloseButton: { width: '100%' },
 });
+

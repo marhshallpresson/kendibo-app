@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import {
 import { resolveImage } from '../../constants/images';
+import {
   View,
   Text,
   ScrollView,
@@ -12,7 +12,6 @@ import { resolveImage } from '../../constants/images';
 } from 'react-native';
 import { router } from 'expo-router';
 import {
-import { resolveImage } from '../../constants/images';
   Bell,
   Bookmark,
   Search,
@@ -29,7 +28,6 @@ import { resolveImage } from '../../constants/images';
 } from 'lucide-react-native';
 import { useAppTheme } from '../_layout';
 import {
-import { resolveImage } from '../../constants/images';
   spacing,
   radii,
   shadows,
@@ -43,7 +41,6 @@ import { formatKoboToNaira } from '../../utils/currency';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Service } from '../../types';
-import { resolveImage } from '../../constants/images';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -745,4 +742,5 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
 });
+
 

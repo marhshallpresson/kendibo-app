@@ -16,8 +16,8 @@ export default function AddLocationScreen() {
   
   // Default coordinates (e.g. New York or User's current location)
   const [region, setRegion] = useState({
-    latitude: currentAddress?.latitude || 40.7128,
-    longitude: currentAddress?.longitude || -74.0060,
+    latitude: currentAddress?.coordinates?.latitude || 40.7128,
+    longitude: currentAddress?.coordinates?.longitude || -74.0060,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   });
@@ -97,8 +97,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   bottomCard: {
-    borderTopLeftRadius: radii.xxl,
-    borderTopRightRadius: radii.xxl,
+    borderTopLeftRadius: radii.modalSheet,
+    borderTopRightRadius: radii.modalSheet,
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.xl,
     paddingTop: spacing.md,
@@ -152,3 +152,5 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 });
+
+

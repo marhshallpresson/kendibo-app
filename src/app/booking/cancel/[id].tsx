@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { resolveImage } from '../../../constants/images';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, AlertTriangle, Wallet, CreditCard, CheckCircle2 } from 'lucide-react-native';
@@ -360,6 +361,7 @@ const styles = StyleSheet.create({
   receiptValue: { fontSize: 13, textAlign: 'right', flex: 1 },
   successButton: { width: '100%' },
 });
+
 
 
 

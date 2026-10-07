@@ -3,6 +3,7 @@ import { View, StyleSheet, Dimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
+// @ts-ignore
 import 'leaflet/dist/leaflet.css';
 import { useBooking } from '../../../services/queryClient';
 import { Header } from '../../../components/ui/Header';
@@ -102,3 +103,4 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 });
+
