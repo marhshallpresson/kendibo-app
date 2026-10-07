@@ -6,12 +6,7 @@ type NotificationsModule = typeof import('expo-notifications');
 let mod: NotificationsModule | null | undefined;
 function N(): NotificationsModule | null {
   if (mod !== undefined) return mod;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    mod = require('expo-notifications') as NotificationsModule;
-  } catch {
-    mod = null;
-  }
+  try { const C = require('expo-constants'); if (C.default?.appOwnership === 'expo' || C.appOwnership === 'expo') { mod = null; } else { mod = require('expo-notifications') as NotificationsModule; } } catch { mod = null; }
   return mod;
 }
 
@@ -25,7 +20,7 @@ const ANDROID_CHANNEL = 'kendibo-jobs';
  *
  * - requests notification permission
  * - creates the high-importance Android job channel
- * - gets the Expo push token, persists it in expo-secure-store
+ * - gets the FCM push token, persists it in expo-secure-store
  *   under 'kendibo_push_token', and returns it
  * - does NOT upload the token anywhere (no backend push endpoint yet —
  *   token is only logged)
@@ -66,12 +61,11 @@ export async function registerForPushAsync(): Promise<string | null> {
 
     const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas
       ?.projectId;
-    const pushToken = (await notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined))
-      .data;
+    const pushToken = (await notifications.getDevicePushTokenAsync()).data;
 
     await SecureStore.setItemAsync(PUSH_TOKEN_KEY, pushToken);
     // No backend push endpoint yet — log only, do not upload.
-    console.log('[push] Expo push token (stored locally, not uploaded):', pushToken);
+    console.log('[push] FCM push token (stored locally, not uploaded):', pushToken);
     return pushToken;
   } catch (e) {
     console.log('[push] registerForPushAsync failed — returning null', e);
@@ -96,3 +90,4 @@ export async function clearStoredPushToken(): Promise<void> {
     /* best-effort */
   }
 }
+
