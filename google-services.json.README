@@ -1,0 +1,15 @@
+FCM setup (Android push) — REQUIRED before EAS production builds:
+
+1. Firebase console -> create project -> Add Android app
+   package: com.kendibo.app
+2. Download `google-services.json` into `kendibo-app/google-services.json`
+   (this file — same folder as app.json).
+3. `app.json` already references it via
+   `android.googleServicesFile: ./google-services.json`.
+4. EAS: upload with `eas secret` or check into the private repo —
+   NEVER commit it to a public repo.
+
+Why: expo-notifications on Android delivers through FCM.
+Without this file, `android` release builds fail at
+`processReleaseGoogleServices` and push tokens are null.
+Expo Go / dev: push is stubbed (see src/services/push.ts).

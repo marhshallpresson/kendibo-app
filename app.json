@@ -1,17 +1,79 @@
 {
   "expo": {
-    "name": "kendibo-app",
+    "name": "Kendibo",
     "slug": "kendibo-app",
+    "scheme": "kendibo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "backgroundColor": "#FFFFFF",
+      "resizeMode": "contain"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-splash-screen",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#0463ee"
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Kendibo needs camera access for service issue photos and video calls."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Kendibo needs contacts access to help you share referrals with friends."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Kendibo needs photo access for service issue photos and reviews."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Kendibo matches you with nearby verified professionals.",
+          "locationAlwaysPermission": "Kendibo shares your trip location with the customer only during an active service journey.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      "expo-secure-store"
+    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "package": "com.kendibo.app",
+      "versionCode": 1,
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "READ_CONTACTS",
+        "CALL_PHONE",
+        "POST_NOTIFICATIONS",
+        "READ_MEDIA_IMAGES"
+      ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#002a63",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -20,6 +82,10 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "apiUrl": "http://10.0.2.2:3000",
+      "apiUrlDevice": "http://192.168.1.100:3000"
     }
   }
 }
