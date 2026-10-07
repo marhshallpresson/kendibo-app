@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { apiFetch } from '@/services/api/client';
 import { Button } from '@/components/ui';
@@ -10,26 +10,67 @@ export function GeofenceGuard({ children }: { children: React.ReactNode }) {
   const [errorMsg, setErrorMsg] = useState('');
   const { colors } = useAppTheme();
 
-  const checkLocation = async () => {
-    setStatus('loading');
-    try {
-      let { status: permissionStatus } = await Location.requestForegroundPermissionsAsync();
-      if (permissionStatus !== 'granted') {
-        setErrorMsg('Location permission is required to use Kendibo.');
-        setStatus('error');
-        return;
-      }
-
-      let location = await Location.getCurrentPositionAsync({});
+  const verifyWithBackend = async (lat: number, lng: number) => {
+    if (Platform.OS === 'web') {
+      // For web, use Mapbox reverse geocoding via our backend to get the precise city name
+      const reverseRes = await apiFetch<{ data: { city: string } }>(
+        `/v1/geo/reverse-geocode?lat=${lat}&lng=${lng}`
+      );
       
+      const cityRes = await apiFetch<{ data: any[] }>(`/v1/cities`);
+      
+      const mapboxCity = reverseRes.data?.city?.toLowerCase();
+      // Check if the city returned by Mapbox matches any of our supported cities
+      const isSupported = cityRes.data?.some((c: any) => c.id.toLowerCase() === mapboxCity || c.name.toLowerCase() === mapboxCity);
+      
+      if (isSupported) {
+        setStatus('supported');
+      } else {
+        setStatus('unsupported');
+      }
+    } else {
+      // For app, use the precise spatial zone check which is already integrated with live tracking
       const res = await apiFetch<{ data: { serviceable: boolean } }>(
-        `/v1/geo/zones/check?lat=${location.coords.latitude}&lng=${location.coords.longitude}`
+        `/v1/geo/zones/check?lat=${lat}&lng=${lng}`
       );
       
       if (res.data?.serviceable) {
         setStatus('supported');
       } else {
         setStatus('unsupported');
+      }
+    }
+  };
+
+  const checkLocation = async () => {
+    setStatus('loading');
+    try {
+      if (Platform.OS === 'web' && 'geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            verifyWithBackend(position.coords.latitude, position.coords.longitude).catch(e => {
+              console.error(e);
+              setErrorMsg('Failed to verify location with backend.');
+              setStatus('error');
+            });
+          },
+          (error) => {
+            console.error('Web Geolocation error:', error);
+            setErrorMsg('Browser location permission is required.');
+            setStatus('error');
+          }
+        );
+      } else {
+        // App Location fetching
+        let { status: permissionStatus } = await Location.requestForegroundPermissionsAsync();
+        if (permissionStatus !== 'granted') {
+          setErrorMsg('Location permission is required to use Kendibo.');
+          setStatus('error');
+          return;
+        }
+
+        let location = await Location.getCurrentPositionAsync({});
+        await verifyWithBackend(location.coords.latitude, location.coords.longitude);
       }
     } catch (e) {
       console.error('Geofence check failed:', e);
