@@ -57,7 +57,9 @@ export const Input: React.FC<InputProps> = ({
   testID,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
-  const [isSecure, setIsSecure] = useState(secureTextEntry);
+  // NOTE: secureTextEntry is fully controlled by the parent (screens render
+  // their own eye toggle and flip this prop). No internal copy — otherwise
+  // the toggle appears dead after first render.
   const { colors } = useAppTheme();
 
   const hasError = Boolean(error);
@@ -87,7 +89,7 @@ export const Input: React.FC<InputProps> = ({
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
-          secureTextEntry={isSecure}
+          secureTextEntry={secureTextEntry}
           maxLength={maxLength}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}

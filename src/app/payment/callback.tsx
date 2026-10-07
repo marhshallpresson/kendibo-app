@@ -33,6 +33,12 @@ export default function PaymentCallbackScreen() {
           );
           if (cancelled) return;
           if (rec.status === 'successful' || rec.status === 'success') {
+            try {
+              const { watchup } = require('../../services/watchup') as typeof import('../../services/watchup');
+              watchup.track('payment.confirmed', { reference: rec.reference });
+            } catch {
+              /* ignore */
+            }
             router.replace({ pathname: '/payment/success', params: { paymentRef: rec.reference } });
             return;
           }

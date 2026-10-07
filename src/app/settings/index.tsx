@@ -27,6 +27,7 @@ import { useAppTheme } from '../_layout';
 import { spacing, radii, fonts } from '../../constants/theme';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { useAuthStore } from '../../stores';
 
 export default function SettingsIndexScreen() {
   const router = useRouter();
@@ -41,6 +42,7 @@ export default function SettingsIndexScreen() {
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const logout = useAuthStore((state) => state.logout);
 
   const LANGUAGES = ['English (US)', 'English (UK)', 'Nigerian Pidgin', 'Hausa', 'Yoruba', 'Igbo'];
 
@@ -51,7 +53,8 @@ export default function SettingsIndexScreen() {
 
   const handleConfirmLogout = () => {
     setShowLogoutModal(false);
-    router.replace('/');
+    logout();
+    router.replace('/(auth)/login');
   };
 
   const renderRow = ({

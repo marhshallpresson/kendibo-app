@@ -20,6 +20,7 @@ import { isValidEmail, isValidNigerianPhone, normalizeNigerianPhone } from '../.
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import BrandLogo from '../../components/ui/BrandLogo';
+import GoogleIcon from '../../components/ui/GoogleIcon';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -438,29 +439,15 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.socialRow}>
-            <TouchableOpacity
-              style={styles.socialBtn}
-              onPress={handleSocialSignUp}
-              accessibilityLabel="Sign up with Facebook"
-            >
-              <Text style={[styles.socialIconText, { color: colors.primary }]}>f</Text>
-            </TouchableOpacity>
-
+            
             <TouchableOpacity
               style={styles.socialBtn}
               onPress={handleSocialSignUp}
               accessibilityLabel="Sign up with Google"
             >
-              <Text style={styles.socialIconText}>G</Text>
+              <GoogleIcon size={22} />
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.socialBtn}
-              onPress={handleSocialSignUp}
-              accessibilityLabel="Sign up with Apple"
-            >
-              <Text style={styles.socialIconText}></Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.footerRow}>

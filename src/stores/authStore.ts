@@ -19,6 +19,8 @@ export interface AuthState {
   setPin: (pin: string) => void;
   enableBiometrics: (enabled?: boolean) => void;
   updateUser: (partial: Partial<User>) => void;
+  /** Persist profile fields to the backend (Fill/Edit Profile). */
+  saveProfile: (partial: Partial<User>) => Promise<User>;
   setOnboardingCompleted: (completed: boolean) => void;
 
   // Live session actions (OTP backend, no mock fallback)
@@ -41,6 +43,8 @@ function mapServerUser(raw: any, fallbackIdentity: string, fallbackName?: string
   return {
     id: String(raw?.id ?? ''),
     name,
+    nickname: raw?.nickname,
+    dob: raw?.dob,
     email,
     phone,
     avatarUrl: raw?.avatarUrl,
@@ -95,6 +99,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: true,
       hasCompletedOnboarding: true,
     });
+    try {
+      const { watchup } = require('../services/watchup') as typeof import('../services/watchup');
+      watchup.setUser({ id: user.id, email: user.email, name: user.name });
+      watchup.track('auth.login', {});
+    } catch {
+      /* telemetry must never break login */
+    }
   },
 
   logout: async () => {
@@ -105,6 +116,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       /* best-effort */
     }
     await clearPersistedSession();
+    try {
+      const { watchup } = require('../services/watchup') as typeof import('../services/watchup');
+      watchup.setUser(null);
+    } catch {
+      /* ignore */
+    }
     set({
       user: null,
       token: null,
@@ -137,6 +154,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const next = { ...currentUser, ...partial };
       set({ user: next });
       SecureStore.setItemAsync(USER_KEY, JSON.stringify(next)).catch(() => {});
+    }
+  },
+
+  /** Persist profile to backend PATCH /v1/me (optimistic local update first). */
+  saveProfile: async (partial: Partial<User>) => {
+    const currentUser = get().user;
+    if (currentUser) {
+      const next = { ...currentUser, ...partial };
+      set({ user: next });
+      SecureStore.setItemAsync(USER_KEY, JSON.stringify(next)).catch(() => {});
+    }
+    try {
+      const saved = await apiFetch<User>('/v1/me', {
+        method: 'PATCH',
+        body: {
+          ...(partial.name !== undefined ? { name: partial.name } : {}),
+          ...(partial.nickname !== undefined ? { nickname: partial.nickname } : {}),
+          ...(partial.dob !== undefined ? { dob: partial.dob } : {}),
+          ...(partial.avatarUrl !== undefined ? { avatarUrl: partial.avatarUrl } : {}),
+        },
+      });
+      const merged = { ...(get().user ?? {}), ...mapServerUser(saved, '', (saved as User)?.name) } as User;
+      set({ user: merged });
+      SecureStore.setItemAsync(USER_KEY, JSON.stringify(merged)).catch(() => {});
+      return merged;
+    } catch (err) {
+      if (err instanceof ApiError) throw new Error(err.message);
+      throw err;
     }
   },
 
@@ -184,6 +229,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         hasCompletedOnboarding: true,
       });
+      try {
+        const { watchup } = require('../services/watchup') as typeof import('../services/watchup');
+        watchup.setUser({ id: user.id, email: user.email, name: user.name });
+        watchup.track('auth.otp_verified', { channel });
+      } catch {
+        /* ignore */
+      }
       return user;
     } catch (err) {
       if (err instanceof ApiError) throw new Error(err.message);
@@ -233,6 +285,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isAuthenticated: true,
         hasCompletedOnboarding: true,
       });
+      try {
+        const { watchup } = require('../services/watchup') as typeof import('../services/watchup');
+        watchup.setUser({ id: user.id, email: user.email, name: user.name });
+      } catch {
+        /* ignore */
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         await clearPersistedSession();

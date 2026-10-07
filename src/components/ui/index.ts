@@ -7,3 +7,4 @@ export * from './Modal';
 export * from './LoadingSkeleton';
 export * from './EmptyState';
 export { default as BrandLogo } from './BrandLogo';
+export { default as GoogleIcon } from './GoogleIcon';

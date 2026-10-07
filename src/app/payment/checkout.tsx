@@ -234,6 +234,13 @@ export default function CheckoutScreen() {
       clearCart();
       setIsProcessing(false);
 
+      try {
+        const { watchup } = require('../../services/watchup') as typeof import('../../services/watchup');
+        watchup.track('booking.created', { bookingId: createdBooking.id, method: selectedMethod });
+        watchup.track('payment.initiated', { bookingId: createdBooking.id, method: selectedMethod });
+      } catch {
+        /* telemetry must never break checkout */
+      }
       router.replace({
         pathname: '/payment/success',
         params: {

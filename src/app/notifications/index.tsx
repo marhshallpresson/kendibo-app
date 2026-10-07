@@ -6,6 +6,7 @@ import { useAppTheme } from '../_layout';
 import { spacing, radii, fonts } from '../../constants/theme';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useNotificationStore, timeAgo, NotificationKind } from '../../stores/notificationStore';
+import { goBack } from '../../utils/navigation';
 
 function KindIcon({ kind }: { kind: NotificationKind }) {
   const bg = { booking: '#E7EFFF', promo: '#FFF3DC', chat: '#E3F5EC', system: '#EFE7FF' }[kind];
@@ -33,7 +34,7 @@ export default function NotificationsInboxScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={styles.headerBar}>
-        <Pressable onPress={() => router.back()} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
+        <Pressable onPress={() => goBack('/(tabs)')} hitSlop={8} accessibilityRole="button" accessibilityLabel="Go back">
           <ArrowLeft size={24} color={colors.textPrimary} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Notifications</Text>

@@ -56,7 +56,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.kendibo.app",`n      "googleServicesFile": "./google-services.json",
+      "package": "com.kendibo.app",
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [

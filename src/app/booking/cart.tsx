@@ -131,7 +131,7 @@ export default function BookingCartScreen() {
           title="Your Cart is Empty"
           description="Browse our trusted home services catalog and schedule an expert technician."
           buttonTitle="Explore Services"
-          onButtonPress={() => router.push('/')}
+          onButtonPress={() => router.push('/search')}
         />
       </SafeAreaView>
     );

@@ -15,6 +15,8 @@ export type UserRole = 'customer' | 'provider' | 'admin' | 'dispatcher';
 export interface User {
   id: string;
   name: string;
+  nickname?: string;
+  dob?: string;
   email: string;
   phone: string;
   avatarUrl?: string;

@@ -18,6 +18,7 @@ import {
 } from '../constants/ThemeContext';
 import { useStartupPermissions } from '../hooks/useStartupPermissions';
 import { registerForPushAsync } from '../services/push';
+import { initWatchup, watchup } from '../services/watchup';
 
 export { ThemeContext, useAppTheme };
 export type { ThemeContextType };
@@ -37,6 +38,9 @@ export default function RootLayout() {
   useEffect(() => {
     if (!fontsLoaded) return;
     SplashScreen.hideAsync().catch(() => {});
+    // WatchUp first: global crash handler + offline-durable telemetry queue.
+    initWatchup();
+    watchup.track('app.opened', {});
     // All launch permissions (notifications, location, camera, contacts,
     // photos) are requested once here, non-blocking.
     requestAll();

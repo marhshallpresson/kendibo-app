@@ -20,6 +20,7 @@ import { useAuthStore } from '../../stores';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import BrandLogo from '../../components/ui/BrandLogo';
+import GoogleIcon from '../../components/ui/GoogleIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -332,38 +333,19 @@ export default function OnboardingScreen() {
           <Text style={styles.letsInTitle}>Let&apos;s you in</Text>
 
           <View style={styles.socialCol}>
-            <TouchableOpacity
-              style={styles.socialRowBtn}
-              onPress={() => Alert.alert('Coming soon', 'Social login is coming soon. Please continue with phone or email.')}
-              accessibilityLabel="Continue with Facebook"
-            >
-              <View style={styles.socialGlyphBox}>
-                <Text style={[styles.socialGlyph, { color: colors.primary }]}>f</Text>
-              </View>
-              <Text style={styles.socialLabel}>Continue with Facebook</Text>
-            </TouchableOpacity>
+            
 
             <TouchableOpacity
               style={styles.socialRowBtn}
-              onPress={() => Alert.alert('Coming soon', 'Social login is coming soon. Please continue with phone or email.')}
+              onPress={() => Alert.alert('Coming soon', 'Google login is coming soon. Please continue with phone or email.')}
               accessibilityLabel="Continue with Google"
             >
               <View style={styles.socialGlyphBox}>
-                <Text style={styles.socialGlyph}>G</Text>
+                <GoogleIcon size={20} />
               </View>
               <Text style={styles.socialLabel}>Continue with Google</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.socialRowBtn}
-              onPress={() => Alert.alert('Coming soon', 'Social login is coming soon. Please continue with phone or email.')}
-              accessibilityLabel="Continue with Apple"
-            >
-              <View style={styles.socialGlyphBox}>
-                <Text style={styles.socialGlyph}></Text>
-              </View>
-              <Text style={styles.socialLabel}>Continue with Apple</Text>
-            </TouchableOpacity>
           </View>
 
           <View style={styles.dividerRow}>
