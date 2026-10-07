@@ -52,7 +52,8 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <Stack
+          <View style={Platform.OS === 'web' ? { flex: 1, maxWidth: 480, width: '100%', alignSelf: 'center', backgroundColor: '#fff', boxShadow: '0 0 20px rgba(0,0,0,0.1)' } : { flex: 1 }}>
+<Stack
             screenOptions={{
               headerShown: false,
               animation: 'slide_from_right',
@@ -67,4 +68,5 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
+
 
