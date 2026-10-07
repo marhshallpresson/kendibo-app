@@ -25,7 +25,7 @@ export interface AuthState {
   /** Request a one-time code. Returns backend devCode in dev only. */
   requestOtp: (channel: OtpChannel, identity: string) => Promise<{ devCode?: string }>;
   /** Verify OTP → persists access+refresh+user in SecureStore. Throws on failure. */
-  verifyOtp: (channel: OtpChannel, identity: string, code: string, name?: string) => Promise<User>;
+  verifyOtp: (channel: OtpChannel, identity: string, code: string, name?: string, role?: string) => Promise<User>;
   /** Restore session on boot: loads tokens → GET /v1/me; 401 clears locally. */
   hydrate: () => Promise<void>;
 }
@@ -160,7 +160,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  verifyOtp: async (channel: OtpChannel, identity: string, code: string, name?: string) => {
+  verifyOtp: async (channel: OtpChannel, identity: string, code: string, name?: string, role?: string) => {
     const id = identity.trim();
     const c = code.trim();
     if (!id || !c) throw new Error('Enter the verification code sent to you.');
@@ -172,7 +172,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         deviceId?: string;
       }>('/v1/auth/otp/verify', {
         method: 'POST',
-        body: { channel, identity: id, code: c },
+        body: { channel, identity: id, code: c, name: name?.trim(), role },
         auth: false,
       });
       if (!data?.access || !data?.user) throw new Error('Invalid verification response.');
@@ -246,3 +246,4 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 }));
+

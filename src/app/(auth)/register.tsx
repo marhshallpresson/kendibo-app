@@ -33,6 +33,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
+  const [role, setRole] = useState<'customer' | 'provider'>('customer');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -83,6 +84,7 @@ export default function RegisterScreen() {
           phone: normalizedPhone,
           name: fullName.trim(),
           email: target,
+          role,
         },
       });
     } catch (err: any) {
@@ -361,6 +363,24 @@ export default function RegisterScreen() {
               }
             />
 
+                        <View style={{ marginBottom: 20 }}>
+              <Text style={[styles.inputLabel, { color: colors.textPrimary }]}>How do you want to use this app?</Text>
+              <View style={{ flexDirection: 'row', gap: 12, marginTop: 8 }}>
+                <Pressable
+                  onPress={() => setRole('customer')}
+                  style={[styles.roleCard, role === 'customer' && { borderColor: colors.primary, backgroundColor: colors.primaryLight }]}
+                >
+                  <Text style={[styles.roleCardText, role === 'customer' && { color: colors.primary, fontFamily: fonts.bold }]}>Customer</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => setRole('provider')}
+                  style={[styles.roleCard, role === 'provider' && { borderColor: colors.primary, backgroundColor: colors.primaryLight }]}
+                >
+                  <Text style={[styles.roleCardText, role === 'provider' && { color: colors.primary, fontFamily: fonts.bold }]}>Provider</Text>
+                </Pressable>
+              </View>
+            </View>
+
             {errorMessage ? (
               <View style={styles.errorContainer}>
                 <Text style={styles.errorText}>{errorMessage}</Text>
@@ -433,3 +453,5 @@ export default function RegisterScreen() {
     </SafeAreaView>
   );
 }
+
+

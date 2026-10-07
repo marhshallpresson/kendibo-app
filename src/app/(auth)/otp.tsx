@@ -28,6 +28,7 @@ export default function OtpScreen() {
     phone?: string;
     email?: string;
     name?: string;
+    role?: string;
   }>();
   const { colors } = useAppTheme();
   const verifyOtp = useAuthStore((s) => s.verifyOtp);
@@ -91,7 +92,7 @@ export default function OtpScreen() {
 
     setIsLoading(true);
     try {
-      await verifyOtp(channel, target, otp, params.name);
+      await verifyOtp(channel, target, otp, params.name, params.role);
       router.push({
         pathname: '/(auth)/create-pin',
         params: {
@@ -336,3 +337,4 @@ export default function OtpScreen() {
     </SafeAreaView>
   );
 }
+
