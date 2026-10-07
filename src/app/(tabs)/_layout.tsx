@@ -11,10 +11,13 @@ import {
 import { useAppTheme } from '../_layout';
 import { fonts } from '../../constants/theme';
 
+import { GeofenceGuard } from '@/components/GeofenceGuard';
+
 export default function TabLayout() {
   const { colors, isDark } = useAppTheme();
 
   return (
+    <GeofenceGuard>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -87,6 +90,7 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </GeofenceGuard>
   );
 }
 

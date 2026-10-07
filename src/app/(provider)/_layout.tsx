@@ -3,10 +3,13 @@ import { Tabs } from 'expo-router';
 import { LayoutDashboard, Calendar, Store, CircleDollarSign } from 'lucide-react-native';
 import { useAppTheme } from '../_layout';
 
+import { GeofenceGuard } from '@/components/GeofenceGuard';
+
 export default function ProviderLayout() {
   const { colors } = useAppTheme();
 
   return (
+    <GeofenceGuard>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -55,5 +58,6 @@ export default function ProviderLayout() {
         }}
       />
     </Tabs>
+    </GeofenceGuard>
   );
 }
