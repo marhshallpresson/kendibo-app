@@ -14,7 +14,7 @@ if (!fs.existsSync(distPath)) {
 app.use(express.static(distPath));
 
 // For any other route, serve index.html (SPA fallback)
-app.get('*', (req, res) => {
+app.use((req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
