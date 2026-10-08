@@ -22,6 +22,7 @@ export default function PaymentCallbackScreen() {
     let cancelled = false;
     const ref = params.checkout_id ?? params.reference;
     if (!ref) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- mount-time missing-ref fallback to failure state
       setState('failed');
       return;
     }

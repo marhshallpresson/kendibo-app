@@ -50,7 +50,7 @@ export default function UrgencyAddressScreen() {
           <AlertTriangle size={24} color={urgency === 'asap' ? theme.light.colors.error : theme.light.colors.textMuted} />
           <View style={styles.cardContent}>
             <Text style={[styles.cardTitle, urgency === 'asap' && { color: theme.light.colors.error }]}>Emergency (ASAP)</Text>
-            <Text style={styles.cardDesc}>We'll find the nearest available pro immediately</Text>
+            <Text style={styles.cardDesc}>We&apos;ll find the nearest available pro immediately</Text>
           </View>
         </TouchableOpacity>
       </View>

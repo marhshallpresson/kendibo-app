@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Animated, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { radii, spacing } from '../../constants/theme';
 import { useAppTheme } from '../../constants/ThemeContext';
@@ -20,7 +20,7 @@ export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
   lines = 1,
   testID,
 }) => {
-  const opacityAnim = useRef(new Animated.Value(0.3)).current;
+  const [opacityAnim] = useState(() => new Animated.Value(0.3));
   const { colors } = useAppTheme();
 
   useEffect(() => {

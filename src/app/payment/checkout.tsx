@@ -206,11 +206,14 @@ export default function CheckoutScreen() {
     const { requireOnline, failedTransactionAlert } = require('../../services/txnGuard');
     if (!(await requireOnline('Payment'))) return; // never start money work offline
     setIsProcessing(true);
+    // eslint-disable-next-line react-hooks/purity -- payment ref generated once per user-initiated transaction, not during render
     let paymentRef = `PAY-KBD-${Date.now().toString(36)}`;
     try {
       const targetService = displayItems[0]?.service;
+      // eslint-disable-next-line react-hooks/purity -- booking number generated once per user-initiated transaction
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
       const bookingNumber = `KB-${randomSuffix}`;
+      // eslint-disable-next-line react-hooks/purity -- payment ref suffix generated once per user-initiated transaction
       paymentRef = `PAY-KBD-${randomSuffix}-${Math.floor(100000 + Math.random() * 900000)}`;
 
       if (selectedMethod === 'WALLET') {

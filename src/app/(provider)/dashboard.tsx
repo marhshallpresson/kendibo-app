@@ -49,7 +49,7 @@ export default function ProviderDashboardScreen() {
         {/* Quick Stats */}
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { backgroundColor: colors.primary }]}>
-            <Text style={styles.statLabel}>Today's Earnings</Text>
+            <Text style={styles.statLabel}>Today&apos;s Earnings</Text>
             <Text style={styles.statValue}>₦ 25,000</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}>

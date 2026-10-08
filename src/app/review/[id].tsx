@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -84,6 +84,17 @@ export default function ReviewScreen() {
   const [warrantyDescription, setWarrantyDescription] = useState<string>('');
 
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
+
+  const warrantyUntil = useMemo(
+    () =>
+      // eslint-disable-next-line react-hooks/purity -- warranty deadline snapshot computed once per mount, not per render
+      new Date(Date.now() + 14 * 86400000).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }),
+    []
+  );
 
   const getRatingFeedbackLabel = (r: number): string => {
     switch (r) {
@@ -390,12 +401,7 @@ export default function ReviewScreen() {
                 <Text style={styles.warrantyStatusTitle}>14-Day Warranty Protection Active</Text>
                 <Text style={styles.warrantyStatusSub}>
                   Order #{booking?.bookingNumber} is guaranteed until{' '}
-                  {new Date(Date.now() + 14 * 86400000).toLocaleDateString('en-GB', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric',
-                  })}
-                  .
+                  {warrantyUntil}.
                 </Text>
               </View>
             </View>
