@@ -22,9 +22,9 @@ export function PinLockScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.textPrimary }]}>Session Locked</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>Welcome back</Text>
       <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-        Please enter your PIN to continue.
+        Please enter your 4 digit PIN to continue.
       </Text>
       
       <TextInput

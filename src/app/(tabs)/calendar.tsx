@@ -17,6 +17,7 @@ import {
 } from 'lucide-react-native';
 import { useAppTheme } from '../_layout';
 import { spacing, radii, shadows, fonts } from '../../constants/theme';
+import { serviceImageSource } from '../../constants/images';
 import { useBookings } from '../../services/queryClient';
 import { Badge, BadgeVariant } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -251,11 +252,7 @@ export default function CalendarScreen() {
                       accessibilityLabel="Open booking tracking"
                     >
                       <Image
-                        source={{
-                          uri:
-                            booking.service?.imageUrl ||
-                            'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400',
-                        }}
+                        source={serviceImageSource(booking.service?.imageUrl)}
                         style={styles.bookingThumb}
                       />
                       <View style={styles.bookingMid}>

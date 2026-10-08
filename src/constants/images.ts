@@ -85,3 +85,13 @@ export function resolveImage(ref?: string | number | null): ImageSourcePropType 
 
 /** All bundled keys (for galleries / seeding). */
 export const IMAGE_KEYS = Object.keys(IMAGES) as ImageKey[];
+
+/** Remote/asset avatar URL wins; bundled default otherwise (never hotlink). */
+export function avatarSource(url?: string | null): ImageSourcePropType {
+  return url ? { uri: url } : IMAGES.avatar1;
+}
+
+/** Server service image wins; bundled default otherwise (never hotlink). */
+export function serviceImageSource(url?: string | null): ImageSourcePropType {
+  return url ? resolveImage(url) : IMAGES.cleaningHero;
+}

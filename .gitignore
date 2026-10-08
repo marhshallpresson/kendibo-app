@@ -40,5 +40,6 @@ yarn-error.*
 /ios
 /android
 
-# local env (tokens, API URLs) — never commit
+# local env (tokens, API URLs) ï¿½ never commit
 .env
+build_apk.ps1

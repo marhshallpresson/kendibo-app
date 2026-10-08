@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { resolveImage } from '../../constants/images';
+import { resolveImage, avatarSource } from '../../constants/images';
 import {
   View,
   Text,
@@ -94,7 +94,7 @@ export default function ChatDetailScreen() {
   };
 
   const handleAttachMockImage = () => {
-    setAttachedImage('https://images.unsplash.com/photo-1544717305-2782549b5136?w=400');
+    setAttachedImage('reviewPhoto');
   };
 
   return (
@@ -115,14 +115,7 @@ export default function ChatDetailScreen() {
 
         <View style={styles.headerProfile}>
           <View style={styles.avatarWrapper}>
-            <Image
-              source={{
-                uri:
-                  provider?.avatarUrl ||
-                  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-              }}
-              style={styles.avatar}
-            />
+            <Image source={avatarSource(provider?.avatarUrl)} style={styles.avatar} />
             <View style={styles.onlineDot} />
           </View>
           <View style={styles.headerInfo}>

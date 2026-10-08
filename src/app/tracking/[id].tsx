@@ -33,6 +33,7 @@ import { Card } from '../../components/ui/Card';
 import { Header } from '../../components/ui/Header';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { lightColors as colors, spacing, typography, radii } from '../../constants/theme';
+import { avatarSource } from '../../constants/images';
 import { formatKoboToNaira } from '../../utils/currency';
 import { formatDateWAT, formatTimeWAT, formatDateTimeWAT } from '../../utils/date';
 
@@ -213,14 +214,7 @@ export default function TrackingDetailScreen() {
         {booking.provider ? (
           <Card variant="elevated" padding="md" style={styles.providerCard}>
             <View style={styles.providerHeaderRow}>
-              <Image
-                source={{
-                  uri:
-                    booking.provider.avatarUrl ||
-                    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-                }}
-                style={styles.providerAvatar}
-              />
+              <Image source={avatarSource(booking.provider.avatarUrl)} style={styles.providerAvatar} />
               <View style={styles.providerMeta}>
                 <View style={styles.providerNameRow}>
                   <Text style={styles.providerName}>{booking.provider.name}</Text>

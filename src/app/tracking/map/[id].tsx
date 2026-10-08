@@ -25,6 +25,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { lightColors as colors, spacing, typography, radii, shadows } from '../../../constants/theme';
+import { avatarSource } from '../../../constants/images';
 
 const UYO_CENTER: LatLng = { latitude: 5.0377, longitude: 7.9128 };
 
@@ -221,14 +222,7 @@ export default function TrackingMapScreen() {
         <View style={styles.sheetHandle} />
 
         <View style={styles.providerProfileRow}>
-          <Image
-            source={{
-              uri:
-                provider?.avatarUrl ||
-                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-            }}
-            style={styles.sheetAvatar}
-          />
+          <Image source={avatarSource(provider?.avatarUrl)} style={styles.sheetAvatar} />
 
           <View style={styles.sheetInfo}>
             <View style={styles.sheetNameRow}>

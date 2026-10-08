@@ -68,7 +68,7 @@ export default function QuoteReviewScreen() {
         durationMinutes: 120,
         rating: 4.9,
         reviewCount: 42,
-        imageUrl: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e',
+        imageUrl: 'electrician',
         isQuoteBased: true,
         addOns: [],
       },

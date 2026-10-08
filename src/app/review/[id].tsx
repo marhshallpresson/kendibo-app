@@ -29,6 +29,7 @@ import { Card } from '../../components/ui/Card';
 import { Header } from '../../components/ui/Header';
 import { Modal } from '../../components/ui/Modal';
 import { lightColors as colors, spacing, typography, radii } from '../../constants/theme';
+import { resolveImage, avatarSource } from '../../constants/images';
 import { formatDateWAT } from '../../utils/date';
 
 const COMPLIMENT_TAGS = [
@@ -75,7 +76,7 @@ export default function ReviewScreen() {
   const [feedbackNotes, setFeedbackNotes] = useState<string>('');
   const [selectedTipKobo, setSelectedTipKobo] = useState<number>(0);
   const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([
-    'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400',
+    'cleaningHero',
   ]);
 
   // 14-Day Warranty claim toggle
@@ -121,7 +122,7 @@ export default function ReviewScreen() {
   const handleAddMockPhoto = () => {
     setUploadedPhotos((prev) => [
       ...prev,
-      'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400',
+      'reviewPhoto',
     ]);
   };
 
@@ -141,11 +142,7 @@ export default function ReviewScreen() {
         {/* Completed Service Summary */}
         <Card variant="flat" padding="md" style={styles.serviceHeaderCard}>
           <Image
-            source={{
-              uri:
-                provider?.avatarUrl ||
-                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-            }}
+            source={avatarSource(provider?.avatarUrl)}
             style={styles.providerAvatar}
           />
           <View style={styles.serviceHeaderInfo}>
@@ -238,7 +235,7 @@ export default function ReviewScreen() {
         <View style={styles.photosGrid}>
           {uploadedPhotos.map((uri, index) => (
             <View key={`photo_${index}`} style={styles.photoThumbnailWrapper}>
-              <Image source={{ uri }} style={styles.photoThumbnail} />
+              <Image source={resolveImage(uri)} style={styles.photoThumbnail} />
               <Pressable
                 onPress={() => handleRemovePhoto(index)}
                 style={styles.removePhotoBadge}

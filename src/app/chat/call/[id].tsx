@@ -21,6 +21,7 @@ import {
 import { useBooking } from '../../../services/queryClient';
 import { Booking } from '../../../types';
 import { darkColors as colors, spacing, typography, radii } from '../../../constants/theme';
+import { avatarSource } from '../../../constants/images';
 
 export default function VoiceCallScreen() {
   const router = useRouter();
@@ -85,14 +86,7 @@ export default function VoiceCallScreen() {
         <View style={styles.avatarPulsingContainer}>
           <View style={styles.outerPulseRing} />
           <View style={styles.innerPulseRing} />
-          <Image
-            source={{
-              uri:
-                provider?.avatarUrl ||
-                'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200',
-            }}
-            style={styles.avatar}
-          />
+          <Image source={avatarSource(provider?.avatarUrl)} style={styles.avatar} />
         </View>
 
         <Text style={styles.callerName}>{provider?.name || 'Assigned Technician'}</Text>
