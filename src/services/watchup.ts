@@ -259,11 +259,16 @@ class WatchupRN {
       await this.load();
       while (this.queue.length > 0) {
         const batch = this.queue.splice(0, MAX_BATCH);
+        const events = batch.filter(i => i.kind === 'event');
+        const errors = batch.filter(i => i.kind === 'error');
+        const traces = batch.filter(i => i.kind === 'trace');
         const body = JSON.stringify({
           contract_version: 1,
           sdk: { name: 'kendibo-watchup-rn', version: '1.0.0' },
           service: 'kendibo-app',
-          items: batch,
+          events,
+          errors,
+          traces,
         });
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 8000);
