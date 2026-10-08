@@ -35,7 +35,7 @@ export default function AddLocationScreenWeb() {
 
   const [lat, setLat] = useState(currentAddress?.coordinates?.latitude || 9.06);
   const [lng, setLng] = useState(currentAddress?.coordinates?.longitude || 7.49);
-  const [addressText] = useState('Gwarinpa, Abuja');
+  const [addressText] = useState('');
 
   const handleContinue = () => {
     router.back();

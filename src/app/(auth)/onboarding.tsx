@@ -36,7 +36,7 @@ const slides: Slide[] = [
     id: '1',
     title: 'We provide professional service at a friendly price',
     description:
-      'Find trusted local technicians, cleaners, painters, and appliance mechanics in Uyo ready to solve your property needs.',
+      'Find trusted local technicians, cleaners, painters, and appliance mechanics ready to solve your property needs.',
     image: 'cleaningHero',
   },
   {

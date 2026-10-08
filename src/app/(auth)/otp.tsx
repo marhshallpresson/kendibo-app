@@ -120,7 +120,7 @@ export default function OtpScreen() {
           },
         });
       } else {
-        router.replace((role === 'provider' ? '/(provider)' : '/(tabs)') as any);
+        router.replace((role?.toLowerCase() === 'provider' ? '/(provider)' : '/(tabs)') as any);
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Invalid code. Please try again.');

@@ -117,7 +117,7 @@ export default function CheckoutScreen() {
           method: 'POST',
           body: {
             amountKobo: String(finalTotalKobo),
-            email: user?.email || 'customer@kendibo.app',
+            email: user?.email || user?.phone || '',
           },
         },
       );

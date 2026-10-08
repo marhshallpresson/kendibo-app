@@ -38,8 +38,8 @@ export default function ProfileScreen() {
 
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-  const userName = user?.name || 'Andrew Ainsley';
-  const userEmail = user?.email || 'andrew_ainsley@yourdomain.com';
+  const userName = user?.name || 'Hi there, Welcome';
+  const userEmail = user?.email || 'Sign in';
 
   const handleConfirmLogout = () => {
     setIsLogoutModalOpen(false);
@@ -115,7 +115,7 @@ export default function ProfileScreen() {
           {renderRow({
             icon: <User size={22} color={colors.textPrimary} />,
             label: 'Edit Profile',
-            onPress: () => router.push('/settings'),
+            onPress: () => router.push('/settings/edit-profile'),
           })}
           {renderRow({
             icon: <Bell size={22} color={colors.textPrimary} />,

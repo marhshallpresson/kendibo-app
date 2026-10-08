@@ -49,17 +49,10 @@ export default function SecuritySettingsScreen() {
   const [activeSessions, setActiveSessions] = useState<LoginSession[]>([
     {
       id: 'sess_1',
-      device: 'Infinix Note 30 Pro (This Device)',
-      location: 'Uyo, Akwa Ibom, Nigeria',
+      device: 'This Device',
+      location: 'Your current location',
       lastActive: 'Active now',
       isCurrent: true,
-    },
-    {
-      id: 'sess_2',
-      device: 'Chrome on Windows 11',
-      location: 'Lagos, Nigeria',
-      lastActive: '2 days ago',
-      isCurrent: false,
     },
   ]);
 

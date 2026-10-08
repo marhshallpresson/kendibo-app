@@ -65,7 +65,7 @@ export default function ConfirmPinScreen() {
 
         // PIN setup complete — session already verified via OTP/Google.
         const role = useAuthStore.getState().user?.role;
-        router.replace((role === 'provider' ? '/(provider)' : '/(tabs)') as any);
+        router.replace((role?.toLowerCase() === 'provider' ? '/(provider)' : '/(tabs)') as any);
       }, 400);
   };
 

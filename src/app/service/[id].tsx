@@ -188,7 +188,7 @@ export default function ServiceDetailScreen() {
             <Text style={[styles.metaAddress, { color: colors.textSecondary, fontFamily: fonts.regular }]} numberOfLines={1}>
               {currentAddress
                 ? `${currentAddress.street}${currentAddress.city ? `, ${currentAddress.city}` : ''}`
-                : 'Uyo, Akwa Ibom'}
+                : 'Your location'}
             </Text>
           </View>
           <Text style={[styles.price, { color: colors.primary, fontFamily: fonts.extraBold }]}>

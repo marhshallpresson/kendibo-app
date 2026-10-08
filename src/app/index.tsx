@@ -23,7 +23,7 @@ export default function EntryRedirect() {
 
 
   if (isAuthenticated) {
-    if (user?.role === 'provider') {
+    if (user?.role?.toLowerCase() === 'provider') {
       return <Redirect href="/(provider)" />;
     }
     return <Redirect href="/(tabs)" />;

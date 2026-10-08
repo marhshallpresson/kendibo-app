@@ -54,6 +54,7 @@ function mapServerUser(raw: any, fallbackIdentity: string, fallbackName?: string
   const name =
     String(raw?.name ?? fallbackName ?? email.split('@')[0] ?? phone ?? 'Kendibo User') ||
     'Kendibo User';
+  const role = raw?.role ? String(raw.role).toLowerCase() : undefined;
   return {
     id: String(raw?.id ?? ''),
     name,
@@ -62,7 +63,7 @@ function mapServerUser(raw: any, fallbackIdentity: string, fallbackName?: string
     email,
     phone,
     avatarUrl: raw?.avatarUrl,
-    role: raw?.role,
+    role: role as any,
     hasPin: Boolean(raw?.hasPin),
     isBiometricEnabled: Boolean(raw?.biometric ?? raw?.isBiometricEnabled),
     createdAt: raw?.createdAt ?? raw?.created_at,
@@ -189,7 +190,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           ...(partial.avatarUrl !== undefined ? { avatarUrl: partial.avatarUrl } : {}),
         },
       });
-      const merged = { ...(get().user ?? {}), ...mapServerUser(saved, '', (saved as User)?.name) } as User;
+      const mapped = mapServerUser(saved, (saved as User)?.email || (saved as User)?.phone || (get().user?.email || get().user?.phone || ''), (saved as User)?.name);
+      const merged = { ...(get().user ?? {}), ...mapped } as User;
       set({ user: merged });
       storageSet(USER_KEY, JSON.stringify(merged));
       return merged;
@@ -435,6 +437,10 @@ async function fetchMe(access: string, cachedUser: User | null): Promise<User> {
   if (cachedUser?.name && (!me?.name || me.name === 'Kendibo User')) user.name = cachedUser.name;
   if (cachedUser?.email && !me?.email) user.email = cachedUser.email;
   if (cachedUser?.phone && !me?.phone) user.phone = cachedUser.phone;
+  // Preserve role from cached user if /v1/me doesn't return it
+  if (!user.role && cachedUser?.role) {
+    user.role = cachedUser.role.toLowerCase() as User['role'];
+  }
   return user;
 }
 
