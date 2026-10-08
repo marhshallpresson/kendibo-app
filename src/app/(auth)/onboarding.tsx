@@ -37,24 +37,21 @@ const slides: Slide[] = [
     title: 'We provide professional service at a friendly price',
     description:
       'Find trusted local technicians, cleaners, painters, and appliance mechanics in Uyo ready to solve your property needs.',
-    image:
-      'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=800&q=80',
+    image: 'cleaningHero',
   },
   {
     id: '2',
     title: 'The best results and your satisfaction are our top priority',
     description:
       'Every job is backed by real warranty protection, genuine spare parts sourcing, and rigorous quality inspection.',
-    image:
-      'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80',
+    image: 'homeExterior',
   },
   {
     id: '3',
     title: "Let's make awesome changes to your home",
     description:
       'Book in under 60 seconds, track your service technician live in real-time, and pay seamlessly via card or bank transfer.',
-    image:
-      'https://images.unsplash.com/photo-1528740561666-dc2479dc08ab?auto=format&fit=crop&w=800&q=80',
+    image: 'cleaningSupplies',
   },
 ];
 
@@ -326,9 +323,7 @@ export default function OnboardingScreen() {
         <View style={[styles.letsInScroll, styles.letsInContent]}>
           <View style={styles.letsInArtRing}>
             <Image
-              source={{
-                uri: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=600&q=80',
-              }}
+              source={resolveImage('cleaningHero')}
               style={styles.letsInArt}
               accessibilityLabel="Home service professional"
             />
@@ -358,7 +353,7 @@ export default function OnboardingScreen() {
             <View style={styles.dividerLine} />
           </View>
 
-          <Button title="Sign in with password" onPress={goToLogin} size="lg" />
+          <Button title="Sign in Email/Phone no." onPress={goToLogin} size="lg" />
 
           <View style={styles.footerRow}>
             <Text style={styles.footerText}>Don&apos;t have an account? </Text>
