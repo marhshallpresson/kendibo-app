@@ -52,6 +52,14 @@ export default function RootLayout() {
     registerForPushAsync().catch(() => {});
   }, [fontsLoaded, requestAll]);
 
+  // Hook up inactivity timer
+  const { useInactivity } = require('../hooks/useInactivity');
+  useInactivity();
+
+  const { useAuthStore } = require('../stores/authStore');
+  const isLocked = useAuthStore((s: any) => s.isLocked);
+  const { PinLockScreen } = require('../components/PinLockScreen');
+
   if (!fontsLoaded) return null;
 
   return (
@@ -61,6 +69,7 @@ export default function RootLayout() {
           <WatchupErrorBoundary screen="RootLayout">
           <View style={Platform.OS === 'web' ? { flex: 1, maxWidth: 480, width: '100%', alignSelf: 'center', backgroundColor: '#fff', boxShadow: '0 0 20px rgba(0,0,0,0.1)' } : { flex: 1 }}>
 <NetworkBanner />
+            {isLocked && <PinLockScreen />}
             <Stack
             screenOptions={{
               headerShown: false,
