@@ -1,5 +1,5 @@
 import { Image, ImageStyle, StyleProp } from 'react-native';
-import { useAppTheme } from '../../app/_layout';
+import { useAppTheme } from '../../constants/ThemeContext';
 
 const lightLogo = require('../../../assets/logo-light.png');
 const darkLogo = require('../../../assets/logo-dark.png');

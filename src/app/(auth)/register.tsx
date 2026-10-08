@@ -12,8 +12,8 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { User, Mail, Lock, Tag, Eye, EyeOff, Check, ArrowLeft, Phone } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { User, Mail, Tag, Check, ArrowLeft, Phone } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuthStore } from '../../stores';
@@ -27,15 +27,18 @@ export default function RegisterScreen() {
   useWatchupScreen('AuthRegister');
 
   const router = useRouter();
+  const params = useLocalSearchParams<{ email?: string; phone?: string }>();
   const requestOtp = useAuthStore((s) => s.requestOtp);
   const { colors } = useAppTheme();
 
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState(
+    typeof params.email === 'string' ? params.email : '',
+  );
+  const [phone, setPhone] = useState(
+    typeof params.phone === 'string' ? params.phone.replace(/^\+234/, '0') : '',
+  );
   const [referralCode, setReferralCode] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [role, setRole] = useState<'customer' | 'provider'>('customer');
   const [isLoading, setIsLoading] = useState(false);
@@ -59,11 +62,6 @@ export default function RegisterScreen() {
       : `0${phone}`;
     if (!phone.trim() || !isValidNigerianPhone(fullPhone)) {
       setErrorMessage('Please enter a valid Nigerian phone number');
-      return;
-    }
-
-    if (!password || password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters');
       return;
     }
 
@@ -366,26 +364,6 @@ export default function RegisterScreen() {
               onChangeText={(val) => setReferralCode(val.toUpperCase())}
               autoCapitalize="characters"
               leftIcon={<Tag size={20} color={colors.textSecondary} />}
-            />
-
-            <Input
-              placeholder="Password"
-              value={password}
-              onChangeText={(val) => {
-                setPassword(val);
-                setErrorMessage('');
-              }}
-              secureTextEntry={!showPassword}
-              leftIcon={<Lock size={20} color={colors.textSecondary} />}
-              rightIcon={
-                <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={8}>
-                  {showPassword ? (
-                    <EyeOff size={20} color={colors.textSecondary} />
-                  ) : (
-                    <Eye size={20} color={colors.textSecondary} />
-                  )}
-                </Pressable>
-              }
             />
 
                         <View style={{ marginBottom: 20 }}>

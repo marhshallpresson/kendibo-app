@@ -28,6 +28,8 @@ export interface AuthState {
   requestOtp: (channel: OtpChannel, identity: string) => Promise<{ devCode?: string }>;
   /** Verify OTP → persists access+refresh+user in SecureStore. Throws on failure. */
   verifyOtp: (channel: OtpChannel, identity: string, code: string, name?: string, role?: string) => Promise<User>;
+  /** Google SSO: POST /v1/auth/google {idToken} → persists session. Returns isNew flag. */
+  loginWithGoogle: (idToken: string) => Promise<{ user: User; isNew: boolean }>;
   /** Restore session on boot: loads tokens → GET /v1/me; 401 clears locally. */
   hydrate: () => Promise<void>;
 }
@@ -241,6 +243,46 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (err instanceof ApiError) throw new Error(err.message);
       if (err instanceof Error) throw err;
       throw new Error('Verification failed. Try again.');
+    }
+  },
+
+  loginWithGoogle: async (idToken: string) => {
+    const token = idToken.trim();
+    if (!token) throw new Error('Google sign-in failed. Try again.');
+    try {
+      const data = await apiFetch<{
+        user: any;
+        access: string;
+        refresh: string;
+        deviceId?: string;
+        isNew?: boolean;
+      }>('/v1/auth/google', {
+        method: 'POST',
+        body: { idToken: token },
+        auth: false,
+      });
+      if (!data?.access || !data?.user) throw new Error('Google sign-in failed. Try again.');
+      const fallbackIdentity = String(data.user?.email ?? '');
+      const user = mapServerUser(data.user, fallbackIdentity, data.user?.name);
+      await persistSession(data.access, data.refresh ?? '', user);
+      set({
+        user,
+        token: data.access,
+        isAuthenticated: true,
+        hasCompletedOnboarding: true,
+      });
+      try {
+        const { watchup } = require('../services/watchup') as typeof import('../services/watchup');
+        watchup.setUser({ id: user.id, email: user.email, name: user.name });
+        watchup.track('auth.google_verified', { isNew: Boolean(data.isNew) });
+      } catch {
+        /* ignore */
+      }
+      return { user, isNew: Boolean(data.isNew) };
+    } catch (err) {
+      if (err instanceof ApiError) throw new Error(err.message);
+      if (err instanceof Error) throw err;
+      throw new Error('Google sign-in failed. Try again.');
     }
   },
 

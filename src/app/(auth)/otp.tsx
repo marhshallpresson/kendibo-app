@@ -36,8 +36,11 @@ export default function OtpScreen() {
 
   const target = params.target || params.email || params.phone || '';
   const displayTarget = target;
-  // Backend OTP is channel-scoped: derive channel from the identity shape.
-  const channel: 'phone' | 'email' = target.includes('@') ? 'email' : 'phone';
+  // Backend OTP is channel-scoped. The initial channel is derived from the
+  // identity shape, but the user can switch the resend channel below —
+  // resend and verify always use the currently selected channel.
+  const initialChannel: 'phone' | 'email' = target.includes('@') ? 'email' : 'phone';
+  const [resendChannel, setResendChannel] = useState<'phone' | 'email'>(initialChannel);
 
   const [otp, setOtp] = useState('');
   const [countdown, setCountdown] = useState(55);
@@ -64,13 +67,23 @@ export default function OtpScreen() {
     return () => clearTimeout(timer);
   }, [countdown]);
 
+  // Identity used for the selected channel: prefer the param matching the
+  // channel (register flow passes both phone + email); otherwise fall back
+  // to the single target (login flow) and let the backend validate.
+  const channelTarget =
+    resendChannel === 'email' && params.email
+      ? String(params.email)
+      : resendChannel === 'phone' && params.phone
+        ? String(params.phone)
+        : target;
+
   const handleResend = async () => {
     if (!isResendActive || isResending) return;
     setOtp('');
     setErrorMessage('');
     setIsResending(true);
     try {
-      const { devCode } = await requestOtp(channel, target);
+      const { devCode } = await requestOtp(resendChannel, channelTarget);
       if (__DEV__ && devCode) {
         Alert.alert('DEV OTP code', `Your verification code is ${devCode}`);
       }
@@ -92,15 +105,22 @@ export default function OtpScreen() {
 
     setIsLoading(true);
     try {
-      await verifyOtp(channel, target, otp, params.name, params.role);
-      router.push({
-        pathname: '/(auth)/create-pin',
-        params: {
-          phone: params.phone,
-          name: params.name,
-          email: params.email,
-        },
-      });
+      await verifyOtp(resendChannel, channelTarget, otp, params.name, params.role);
+      // Post-login gate: devices without a local PIN set one up first
+      // (via biometrics), returning PIN holders go straight to tabs.
+      const pin = useAuthStore.getState().pin;
+      if (pin == null) {
+        router.push({
+          pathname: '/(auth)/biometrics',
+          params: {
+            phone: params.phone,
+            name: params.name,
+            email: params.email,
+          },
+        });
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Invalid code. Please try again.');
     } finally {
@@ -234,6 +254,37 @@ export default function OtpScreen() {
           lineHeight: 20,
           color: colors.primary,
         },
+        channelSwitcher: {
+          flexDirection: 'row',
+          backgroundColor: colors.surfaceCard,
+          borderRadius: radii.full,
+          padding: 4,
+          marginTop: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.borderSubtle,
+        },
+        channelTab: {
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: spacing.xs,
+          borderRadius: radii.full,
+        },
+        channelTabActive: {
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        channelTabText: {
+          fontFamily: fonts.regular,
+          fontSize: 13,
+          lineHeight: 18,
+          color: colors.textSecondary,
+        },
+        channelTabTextActive: {
+          fontFamily: fonts.semiBold,
+          color: colors.primary,
+        },
         verifyButton: {
           marginTop: 'auto',
           marginBottom: spacing.xl,
@@ -323,6 +374,44 @@ export default function OtpScreen() {
                 Resend code in <Text style={styles.resendCountdown}>{countdown} s</Text>
               </Text>
             )}
+            <View style={styles.channelSwitcher}>
+              <Pressable
+                style={[
+                  styles.channelTab,
+                  resendChannel === 'phone' && styles.channelTabActive,
+                ]}
+                onPress={() => setResendChannel('phone')}
+                accessibilityRole="tab"
+                accessibilityLabel="Resend via SMS"
+              >
+                <Text
+                  style={[
+                    styles.channelTabText,
+                    resendChannel === 'phone' && styles.channelTabTextActive,
+                  ]}
+                >
+                  SMS
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[
+                  styles.channelTab,
+                  resendChannel === 'email' && styles.channelTabActive,
+                ]}
+                onPress={() => setResendChannel('email')}
+                accessibilityRole="tab"
+                accessibilityLabel="Resend via Email"
+              >
+                <Text
+                  style={[
+                    styles.channelTabText,
+                    resendChannel === 'email' && styles.channelTabTextActive,
+                  ]}
+                >
+                  Email
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
           <Button

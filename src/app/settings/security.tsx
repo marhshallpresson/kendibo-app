@@ -12,8 +12,6 @@ import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
   ChevronRight,
-  Eye,
-  EyeOff,
   AlertCircle,
   CheckCircle2,
 } from 'lucide-react-native';
@@ -45,14 +43,6 @@ export default function SecuritySettingsScreen() {
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [pinError, setPinError] = useState('');
-
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [passwordError, setPasswordError] = useState('');
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -98,28 +88,6 @@ export default function SecuritySettingsScreen() {
     setNewPin('');
     setConfirmPin('');
     showToast('Transaction PIN updated successfully!');
-  };
-
-  const handleUpdatePassword = () => {
-    if (!currentPassword) {
-      setPasswordError('Please enter current password.');
-      return;
-    }
-    if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters long.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match.');
-      return;
-    }
-
-    setPasswordError('');
-    setShowPasswordModal(false);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    showToast('Password updated successfully!');
   };
 
   const handleRevokeSession = (sessionId: string) => {
@@ -188,14 +156,6 @@ export default function SecuritySettingsScreen() {
           accessibilityRole="button"
         >
           <Text style={[styles.softButtonText, { color: colors.primary }]}>Change PIN</Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.softButton, { backgroundColor: colors.primaryLight }]}
-          onPress={() => setShowPasswordModal(true)}
-          accessibilityRole="button"
-        >
-          <Text style={[styles.softButtonText, { color: colors.primary }]}>Change Password</Text>
         </Pressable>
 
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
@@ -305,110 +265,6 @@ export default function SecuritySettingsScreen() {
             variant="primary"
             size="md"
             onPress={handleUpdatePin}
-            style={styles.modalSubmitButton}
-          />
-        </View>
-      </Modal>
-
-      <Modal
-        visible={showPasswordModal}
-        onClose={() => {
-          setShowPasswordModal(false);
-          setPasswordError('');
-        }}
-        type="center"
-        title="Change Password"
-      >
-        <View style={styles.modalFormContent}>
-          {passwordError ? (
-            <View style={[styles.errorBanner, { backgroundColor: colors.badgeRedBg }]}>
-              <AlertCircle size={16} color={colors.error} />
-              <Text style={[styles.errorText, { color: colors.error }]}>{passwordError}</Text>
-            </View>
-          ) : null}
-
-          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-            Current Password
-          </Text>
-          <View
-            style={[
-              styles.passwordFieldWrapper,
-              { backgroundColor: colors.inputFill, borderColor: colors.border },
-            ]}
-          >
-            <TextInput
-              placeholder="Enter current password"
-              placeholderTextColor={colors.textMuted}
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry={!showCurrentPassword}
-              style={[styles.passwordInput, { color: colors.textPrimary }]}
-            />
-            <Pressable
-              onPress={() => setShowCurrentPassword((prev) => !prev)}
-              style={styles.eyeIcon}
-            >
-              {showCurrentPassword ? (
-                <EyeOff size={18} color={colors.textSecondary} />
-              ) : (
-                <Eye size={18} color={colors.textSecondary} />
-              )}
-            </Pressable>
-          </View>
-
-          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-            New Password (min 8 chars)
-          </Text>
-          <View
-            style={[
-              styles.passwordFieldWrapper,
-              { backgroundColor: colors.inputFill, borderColor: colors.border },
-            ]}
-          >
-            <TextInput
-              placeholder="Enter new password"
-              placeholderTextColor={colors.textMuted}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry={!showNewPassword}
-              style={[styles.passwordInput, { color: colors.textPrimary }]}
-            />
-            <Pressable
-              onPress={() => setShowNewPassword((prev) => !prev)}
-              style={styles.eyeIcon}
-            >
-              {showNewPassword ? (
-                <EyeOff size={18} color={colors.textSecondary} />
-              ) : (
-                <Eye size={18} color={colors.textSecondary} />
-              )}
-            </Pressable>
-          </View>
-
-          <Text style={[styles.fieldLabel, { color: colors.textSecondary }]}>
-            Confirm New Password
-          </Text>
-          <View
-            style={[
-              styles.passwordFieldWrapper,
-              { backgroundColor: colors.inputFill, borderColor: colors.border },
-            ]}
-          >
-            <TextInput
-              placeholder="Re-enter new password"
-              placeholderTextColor={colors.textMuted}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry={!showNewPassword}
-              style={[styles.passwordInput, { color: colors.textPrimary }]}
-            />
-          </View>
-
-          <Button
-            title="Update Password"
-            variant="primary"
-            size="md"
-            onPress={handleUpdatePassword}
             style={styles.modalSubmitButton}
           />
         </View>
@@ -557,23 +413,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: 10,
     marginBottom: spacing.sm,
-  },
-  passwordFieldWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: radii.md,
-    marginBottom: spacing.sm,
-  },
-  passwordInput: {
-    flex: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: 14,
-    fontFamily: fonts.regular,
-  },
-  eyeIcon: {
-    padding: spacing.sm,
   },
   modalSubmitButton: {
     marginTop: spacing.md,

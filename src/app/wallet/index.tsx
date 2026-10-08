@@ -86,6 +86,8 @@ export default function WalletScreen() {
       finalKobo = nairaToKobo(parsedNaira);
     }
 
+    const { requireOnline } = require('../../services/txnGuard');
+    if (!(await requireOnline('Wallet top-up'))) return; // button already disabled while processing
     setIsProcessingTopUp(true);
     const methodLabel = topUpMethod === 'bachs' ? 'Bachs Checkout' : 'Bank Virtual Account';
     const result = await topUp(finalKobo, methodLabel);

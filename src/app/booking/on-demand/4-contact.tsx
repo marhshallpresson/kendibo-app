@@ -39,7 +39,9 @@ export default function ContactScreen() {
     }
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    const { requireOnline } = require('../../../services/txnGuard');
+    if (!(await requireOnline('Service request'))) return;
     createRequest.mutate({
       serviceId: store.serviceId,
       addressId: store.addressId,

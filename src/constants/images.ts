@@ -1,35 +1,50 @@
 import type { ImageSourcePropType } from 'react-native';
 
 /**
- * Bundled image pack (assets/images) — every image the app renders.
- * No remote image URLs: the app works fully offline and never depends on
- * third-party CDNs at render time. Photos are Unsplash-licensed
- * (free commercial use), downloaded once at build time.
- *
- * Data layers store KEYS (e.g. 'cleaningHero'); live API payloads may still
- * carry remote URLs — resolveImage() handles both, plus numeric requires.
+ * Bundled image map — every static visual in the app resolves from
+ * `assets/images/` (offline-first, zero network, no hotlink risk).
+ * Metro requires static `require()` calls, so all images are registered
+ * here once and imported by reference elsewhere. Remote URLs must NOT
+ * be used for bundled content (map tiles excepted — those are a service).
  */
 export const IMAGES = {
-  cleaningHero: require('../../assets/images/cleaning-hero.jpg'),
-  cleaningSupplies: require('../../assets/images/cleaning-supplies.jpg'),
-  disinfection: require('../../assets/images/disinfection.jpg'),
-  livingRoom: require('../../assets/images/living-room.jpg'),
-  homeExterior: require('../../assets/images/home-exterior.jpg'),
-  plumbing: require('../../assets/images/plumbing.jpg'),
-  electrician: require('../../assets/images/electrician.jpg'),
-  electricalWork: require('../../assets/images/electrical-work.jpg'),
-  painting: require('../../assets/images/painting.jpg'),
-  bathroom: require('../../assets/images/bathroom.jpg'),
-  appliance: require('../../assets/images/appliance.jpg'),
-  handyman: require('../../assets/images/handyman.jpg'),
   avatar1: require('../../assets/images/avatar-1.jpg'),
   avatar2: require('../../assets/images/avatar-2.jpg'),
   avatar3: require('../../assets/images/avatar-3.jpg'),
   avatar4: require('../../assets/images/avatar-4.jpg'),
   avatar5: require('../../assets/images/avatar-5.jpg'),
   avatar6: require('../../assets/images/avatar-6.jpg'),
+  cleaningHero: require('../../assets/images/cleaning-hero.jpg'),
+  cleaningSupplies: require('../../assets/images/cleaning-supplies.jpg'),
+  disinfection: require('../../assets/images/disinfection.jpg'),
+  bathroom: require('../../assets/images/bathroom.jpg'),
+  livingRoom: require('../../assets/images/living-room.jpg'),
+  homeExterior: require('../../assets/images/home-exterior.jpg'),
+  electricalWork: require('../../assets/images/electrical-work.jpg'),
+  electrician: require('../../assets/images/electrician.jpg'),
+  handyman: require('../../assets/images/handyman.jpg'),
+  painting: require('../../assets/images/painting.jpg'),
+  plumbing: require('../../assets/images/plumbing.jpg'),
+  appliance: require('../../assets/images/appliance.jpg'),
   reviewPhoto: require('../../assets/images/review-photo.jpg'),
-} as const;
+} satisfies Record<string, ImageSourcePropType>;
+
+export const AVATARS = [
+  IMAGES.avatar1,
+  IMAGES.avatar2,
+  IMAGES.avatar3,
+  IMAGES.avatar4,
+  IMAGES.avatar5,
+  IMAGES.avatar6,
+] as const;
+
+/** Deterministic avatar for an id (stable per user/provider). */
+export function avatarFor(id: string | number): ImageSourcePropType {
+  const s = String(id);
+  let h = 0;
+  for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return AVATARS[h % AVATARS.length];
+}
 
 export type ImageKey = keyof typeof IMAGES;
 

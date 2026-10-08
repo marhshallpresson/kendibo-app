@@ -13,28 +13,49 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import { Mail, Phone, ArrowLeft } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuthStore } from '../../stores';
+import { apiFetch } from '../../services/api/client';
 import { isValidEmail, isValidNigerianPhone, normalizeNigerianPhone } from '../../utils';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import BrandLogo from '../../components/ui/BrandLogo';
 import GoogleIcon from '../../components/ui/GoogleIcon';
 
+WebBrowser.maybeCompleteAuthSession();
+
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
+const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '';
+const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? '';
+
+
 export default function LoginScreen() {
   useWatchupScreen('AuthLogin');
 
   const router = useRouter();
   const requestOtp = useAuthStore((s) => s.requestOtp);
+  const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
   const { colors } = useAppTheme();
 
   const [authMode, setAuthMode] = useState<'phone' | 'email'>('email');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+
+  const googleConfigured = Boolean(
+    GOOGLE_WEB_CLIENT_ID || GOOGLE_IOS_CLIENT_ID || GOOGLE_ANDROID_CLIENT_ID,
+  );
+  const [, , googlePromptAsync] = Google.useIdTokenAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
+    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
+  });
 
   const resolveTarget = (): string | null => {
     if (authMode === 'phone') {
@@ -65,6 +86,30 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
+      // Gate: does this identity already have an account?
+      let exists = false;
+      try {
+        const res = await apiFetch<{ exists: boolean }>('/v1/auth/account-exists', {
+          method: 'POST',
+          body: { identity: target },
+          auth: false,
+        });
+        exists = Boolean(res?.exists);
+      } catch (err: any) {
+        setErrorMessage(err?.message || 'Could not check account. Try again.');
+        return;
+      }
+
+      if (!exists) {
+        Alert.alert('No account found', "No account found — let's create one");
+        router.push({
+          pathname: '/(auth)/register',
+          params:
+            authMode === 'phone' ? { phone: target } : { email: target },
+        });
+        return;
+      }
+
       const { devCode } = await requestOtp(authMode, target);
       if (__DEV__ && devCode) {
         Alert.alert('DEV OTP code', `Your verification code is ${devCode}`);
@@ -84,7 +129,36 @@ export default function LoginScreen() {
   };
 
   const handleSocialLogin = async () => {
-    Alert.alert('Coming soon', 'Social login is coming soon. Please continue with phone or email.');
+    if (!googleConfigured) {
+      Alert.alert('Google sign-in', 'Google sign-in is not set up yet');
+      return;
+    }
+    setIsGoogleLoading(true);
+    setErrorMessage('');
+    try {
+      const response = await googlePromptAsync();
+      if (response?.type !== 'success') {
+        // User dismissed the in-app browser session — stay on login.
+        return;
+      }
+      const idToken =
+        (response.params as { id_token?: string } | undefined)?.id_token ?? '';
+      if (!idToken) {
+        setErrorMessage('Google sign-in failed. Try again.');
+        return;
+      }
+      await loginWithGoogle(idToken);
+      const pin = useAuthStore.getState().pin;
+      if (pin == null) {
+        router.replace('/(auth)/biometrics');
+      } else {
+        router.replace('/(tabs)');
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || 'Google sign-in failed. Try again.');
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
   const styles = React.useMemo(
@@ -225,17 +299,6 @@ export default function LoginScreen() {
         },
         signInButton: {
           marginTop: spacing.md,
-        },
-        forgotCenter: {
-          alignItems: 'center',
-          marginTop: spacing.md,
-          marginBottom: spacing.sm,
-        },
-        forgotPasswordText: {
-          fontFamily: fonts.semiBold,
-          fontSize: 14,
-          lineHeight: 20,
-          color: colors.primary,
         },
         dividerRow: {
           flexDirection: 'row',
@@ -416,12 +479,6 @@ export default function LoginScreen() {
               size="lg"
               style={styles.signInButton}
             />
-
-            <View style={styles.forgotCenter}>
-              <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
-                <Text style={styles.forgotPasswordText}>Didn&apos;t get a code?</Text>
-              </TouchableOpacity>
-            </View>
           </View>
 
           <View style={styles.dividerRow}>
@@ -434,8 +491,9 @@ export default function LoginScreen() {
             
 
             <TouchableOpacity
-              style={styles.socialBtn}
+              style={[styles.socialBtn, isGoogleLoading && { opacity: 0.6 }]}
               onPress={handleSocialLogin}
+              disabled={isGoogleLoading}
               accessibilityLabel="Continue with Google"
             >
               <GoogleIcon size={22} />

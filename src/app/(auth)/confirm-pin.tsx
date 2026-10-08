@@ -63,14 +63,8 @@ export default function ConfirmPinScreen() {
       setIsLoading(false);
       setStorePin(pinToTest);
 
-      router.push({
-        pathname: '/(auth)/biometrics',
-        params: {
-          phone: params.phone,
-          name: params.name,
-          email: params.email,
-        },
-      });
+      // PIN setup complete — session already verified via OTP/Google.
+      router.replace('/(tabs)');
     }, 400);
   };
 

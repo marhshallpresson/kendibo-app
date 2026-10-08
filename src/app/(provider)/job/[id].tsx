@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -82,6 +82,15 @@ export default function JobExecutionScreen() {
     router.replace('/(provider)/bookings');
   };
 
+  const openNavigation = () => {
+    // External navigation (PRD PRO-008). Coords come with the dispatch
+    // offer; until then route to the launch city.
+    const query = encodeURIComponent('Uyo, Akwa Ibom, Nigeria');
+    Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${query}`).catch(() => {
+      Alert.alert('Navigation unavailable', 'Could not open the maps app.');
+    });
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <Header title="Job Execution" onBack={() => router.back()} />
@@ -100,7 +109,7 @@ export default function JobExecutionScreen() {
             title="Navigate to Location" 
             variant="outline" 
             style={styles.navBtn} 
-            onPress={() => {}}
+            onPress={openNavigation}
           />
         </View>
 
@@ -110,11 +119,11 @@ export default function JobExecutionScreen() {
           <Text style={[styles.helper, { color: colors.textSecondary }]}>Check off items as you complete them</Text>
           
           <View style={styles.checklist}>
-            {[{ id: '1', text: 'Arrive at location' }, { id: '2', text: 'Complete requested service' }, { id: '3', text: 'Clean up' }].map((item) => {
-              const isChecked = checkedItems.includes(item.id);
-              return (
-                <Pressable key={item.id} style={styles.checkItem} onPress={() => toggleCheck(item.id)}>
-                  {isChecked ? (
+              {[{ id: '1', text: 'Arrive at location' }, { id: '2', text: 'Complete requested service' }, { id: '3', text: 'Clean up' }].map((item) => {
+                const isChecked = checkedItems.includes(item.id);
+                return (
+                  <Pressable key={item.id} style={styles.checkItem} onPress={() => toggleCheck(item.id)}>
+                    {isChecked ? (
                     <CheckSquare size={24} color={colors.primary} />
                   ) : (
                     <Square size={24} color={colors.border} />

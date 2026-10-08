@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppTheme } from '../../app/_layout';
+import { useAppTheme } from '../../constants/ThemeContext';
 import { typography } from '../../constants/theme';
 
 export function NetworkBanner() {

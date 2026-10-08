@@ -4,7 +4,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
   FlatList,
   Pressable,
   Image,
@@ -335,7 +334,7 @@ export default function OnboardingScreen() {
             />
           </View>
 
-          <Text style={styles.letsInTitle}>Let&apos;s you in</Text>
+          <Text style={styles.letsInTitle}>Let&apos;s get started</Text>
 
           <View style={styles.socialCol}>
             

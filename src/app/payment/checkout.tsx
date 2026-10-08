@@ -203,12 +203,15 @@ export default function CheckoutScreen() {
   };
 
   const executeBookingConfirmation = async (method: PaymentMethod) => {
+    const { requireOnline, failedTransactionAlert } = require('../../services/txnGuard');
+    if (!(await requireOnline('Payment'))) return; // never start money work offline
     setIsProcessing(true);
+    let paymentRef = `PAY-KBD-${Date.now().toString(36)}`;
     try {
       const targetService = displayItems[0]?.service;
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
       const bookingNumber = `KB-${randomSuffix}`;
-      const paymentRef = `PAY-KBD-${randomSuffix}-${Math.floor(100000 + Math.random() * 900000)}`;
+      paymentRef = `PAY-KBD-${randomSuffix}-${Math.floor(100000 + Math.random() * 900000)}`;
 
       if (selectedMethod === 'WALLET') {
         debit(finalTotalKobo, `Booking ${bookingNumber}: ${targetService.name}`, paymentRef, `job_kb_${randomSuffix}`);
@@ -257,7 +260,8 @@ export default function CheckoutScreen() {
       });
     } catch (err) {
       setIsProcessing(false);
-      Alert.alert('Payment Error', 'Unable to complete transaction. Please try again.');
+      const { failedTransactionAlert } = require('../../services/txnGuard');
+      failedTransactionAlert(paymentRef, () => executeBookingConfirmation(method));
     }
   };
 

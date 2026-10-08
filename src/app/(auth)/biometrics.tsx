@@ -8,7 +8,8 @@ import {
   Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { ArrowLeft, FingerprintPattern, CircleUserRound } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../stores';
@@ -70,26 +71,67 @@ function DottedSpinner({ color, size = 44 }: { color: string; size?: number }) {
 
 export default function BiometricsScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{
+    phone?: string;
+    email?: string;
+    name?: string;
+  }>();
   const { colors } = useAppTheme();
 
-  const { enableBiometrics, user } = useAuthStore();
+  const { enableBiometrics } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  const completeSetup = (biometricsEnabled: boolean) => {
+  const goToCreatePin = () => {
+    router.replace({
+      pathname: '/(auth)/create-pin',
+      params: {
+        phone: params.phone,
+        name: params.name,
+        email: params.email,
+      },
+    } as any);
+  };
+
+  const handleSkip = () => {
+    enableBiometrics(false);
+    goToCreatePin();
+  };
+
+  const handleEnableBiometrics = async () => {
+    setErrorMessage('');
     setIsLoading(true);
-
-    setTimeout(() => {
-      enableBiometrics(biometricsEnabled);
-
-      setIsLoading(false);
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      if (!hasHardware) {
+        setErrorMessage('Biometric authentication is not available on this device.');
+        return;
+      }
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!enrolled) {
+        setErrorMessage('No biometrics enrolled. Please set up fingerprint or face in device settings, or skip.');
+        return;
+      }
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Verify it’s you',
+        fallbackLabel: 'Use PIN',
+        cancelLabel: 'Cancel',
+      });
+      if (!result.success) {
+        if (result.error !== 'user_cancel') {
+          setErrorMessage('Biometric verification failed. Try again or skip.');
+        }
+        return;
+      }
+      enableBiometrics(true);
       setShowSuccess(true);
-
-      setTimeout(() => {
-        // Session comes from the verified OTP login — never synthesize one here.
-        router.replace(((user ? '/(tabs)' : '/(auth)/login') as any));
-      }, 1400);
-    }, 500);
+      setTimeout(goToCreatePin, 1400);
+    } catch {
+      setErrorMessage('Biometric verification failed. Try again or skip.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const styles = React.useMemo(
@@ -228,7 +270,7 @@ export default function BiometricsScreen() {
 
         <View style={styles.fingerprintWrap}>
           <TouchableOpacity
-            onPress={() => completeSetup(true)}
+            onPress={handleEnableBiometrics}
             activeOpacity={0.8}
             accessibilityLabel="Enable fingerprint"
           >
@@ -240,10 +282,25 @@ export default function BiometricsScreen() {
           Please put your finger on the fingerprint scanner to get started.
         </Text>
 
+        {errorMessage ? (
+          <Text
+            style={{
+              fontFamily: fonts.semiBold,
+              fontSize: 12,
+              lineHeight: 18,
+              color: colors.error,
+              textAlign: 'center',
+              marginTop: spacing.md,
+            }}
+          >
+            {errorMessage}
+          </Text>
+        ) : null}
+
         <View style={styles.footer}>
           <Button
-            title="Skip"
-            onPress={() => completeSetup(false)}
+            title="Skip and continue"
+            onPress={handleSkip}
             variant="primary"
             size="lg"
             style={styles.skipBtn}
@@ -251,7 +308,7 @@ export default function BiometricsScreen() {
           />
           <Button
             title="Continue"
-            onPress={() => completeSetup(true)}
+            onPress={handleEnableBiometrics}
             loading={isLoading}
             variant="primary"
             size="lg"
@@ -268,8 +325,7 @@ export default function BiometricsScreen() {
             </View>
             <Text style={styles.successTitle}>Congratulations!</Text>
             <Text style={styles.successSubtitle}>
-              Your account is ready to use. You will be redirected to the Home page in a few
-              seconds..
+              Biometrics enabled. Let&apos;s secure your account with a PIN next.
             </Text>
             <DottedSpinner color={colors.primary} size={40} />
           </View>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { Lock, Delete, ArrowLeft, ShieldCheck, AlertCircle } from 'lucide-react-
 import { Header, Button } from '../../components/ui';
 import { useAuthStore } from '../../stores/authStore';
 import { formatKoboToNaira } from '../../utils/currency';
+import { recordPinFailure, resetPinAttempts, pinLockRemainingMs, LOCKOUT_MS } from '../../services/txnGuard';
 import { lightColors as colors, radii, spacing, typography, shadows } from '../../constants/theme';
 
 export interface PinModalProps {
@@ -32,13 +33,40 @@ export default function PinModalScreen(props: PinModalProps) {
   const [pinDigits, setPinDigits] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [attemptsRemaining, setAttemptsRemaining] = useState<number>(3);
+  const [lockedMs, setLockedMs] = useState<number>(0);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
+
+  // Persistent lockout survives app restarts; tick the countdown down.
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval> | null = null;
+    pinLockRemainingMs().then((ms) => {
+      if (ms > 0) {
+        setLockedMs(ms);
+        setAttemptsRemaining(0);
+        setErrorMsg('Too many wrong attempts. PIN locked for 5 minutes.');
+        timer = setInterval(() => {
+          setLockedMs((prev) => {
+            if (prev <= 1000) {
+              if (timer) clearInterval(timer);
+              setErrorMsg('');
+              setAttemptsRemaining(3);
+              return 0;
+            }
+            return prev - 1000;
+          });
+        }, 1000);
+      }
+    });
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, []);
 
   // Expected PIN is user's stored PIN or '1234' by default
   const expectedPin = userPin || '1234';
 
   const handleKeyPress = (num: string) => {
-    if (isVerifying || pinDigits.length >= 4) return;
+    if (isVerifying || lockedMs > 0 || pinDigits.length >= 4) return;
     setErrorMsg('');
 
     const newPin = pinDigits + num;
@@ -58,9 +86,10 @@ export default function PinModalScreen(props: PinModalProps) {
   const verifyPin = (enteredPin: string) => {
     setIsVerifying(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       setIsVerifying(false);
       if (enteredPin === expectedPin) {
+        await resetPinAttempts();
         if (props.onSuccess) {
           props.onSuccess();
         } else {
@@ -73,11 +102,12 @@ export default function PinModalScreen(props: PinModalProps) {
           });
         }
       } else {
-        const remaining = attemptsRemaining - 1;
+        const { remaining, lockedUntil } = await recordPinFailure();
         setAttemptsRemaining(remaining);
         setPinDigits('');
         if (remaining <= 0) {
-          setErrorMsg('Account temporarily locked. Reset PIN via SMS.');
+          setLockedMs(Math.max(0, lockedUntil - Date.now()) || LOCKOUT_MS);
+          setErrorMsg('Too many wrong attempts. PIN locked for 5 minutes. Use Forgot PIN to reset.');
         } else {
           setErrorMsg(`Incorrect PIN. ${remaining} attempt${remaining > 1 ? 's' : ''} remaining.`);
         }
@@ -190,16 +220,18 @@ export default function PinModalScreen(props: PinModalProps) {
           ))}
         </View>
 
-        {/* Forgot PIN Link */}
+        {/* Forgot PIN Link — real OTP reset flow, not a fake alert */}
         <Pressable
           onPress={() => {
             setErrorMsg('');
             setPinDigits('');
-            alert('A temporary PIN reset code has been sent to your registered phone number.');
+            router.push('/(auth)/forgot-password');
           }}
           style={styles.forgotBtn}
         >
-          <Text style={styles.forgotText}>Forgot PIN?</Text>
+          <Text style={styles.forgotText}>
+            {lockedMs > 0 ? `Locked — retry in ${Math.ceil(lockedMs / 1000)}s or reset via OTP` : 'Forgot PIN?'}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>
