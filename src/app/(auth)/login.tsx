@@ -48,13 +48,16 @@ export default function LoginScreen() {
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const googleConfigured = Boolean(
-    GOOGLE_WEB_CLIENT_ID || GOOGLE_IOS_CLIENT_ID || GOOGLE_ANDROID_CLIENT_ID,
-  );
+  const googleConfigured =
+    Platform.OS === 'android'
+      ? Boolean(GOOGLE_ANDROID_CLIENT_ID)
+      : Platform.OS === 'ios'
+        ? Boolean(GOOGLE_IOS_CLIENT_ID)
+        : Boolean(GOOGLE_WEB_CLIENT_ID);
   const [, , googlePromptAsync] = Google.useIdTokenAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID || 'dummy-client-id-for-web',
-    iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
+    iosClientId: GOOGLE_IOS_CLIENT_ID || 'dummy-client-id-for-ios',
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID || 'dummy-client-id-for-android',
   });
 
   const resolveTarget = (): string | null => {
