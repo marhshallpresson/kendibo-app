@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -29,7 +29,7 @@ export default function KycDocumentsScreen() {
 
   const handleNext = () => {
     if (!documents.idFrontUri || !documents.idBackUri || !documents.selfieUri) {
-      alert('Please upload all required documents.');
+      Alert.alert('Missing documents', 'Please upload all required documents.');
       return;
     }
     router.push('/(provider)/kyc/location');

@@ -27,6 +27,12 @@ const ANDROID_CHANNEL = 'kendibo-jobs';
  * - Expo Go / missing FCM config / denied permission: returns null
  */
 export async function registerForPushAsync(): Promise<string | null> {
+  // Web push needs a VAPID key (notification.vapidPublicKey in app.json),
+  // which is not configured — skip on web to avoid console errors.
+  if (Platform.OS === 'web') {
+    console.log('[push] web push not configured (no VAPID key) — skipping');
+    return null;
+  }
   const notifications = N();
   if (!notifications) {
     console.log('[push] expo-notifications unavailable (Expo Go?) — skipping');

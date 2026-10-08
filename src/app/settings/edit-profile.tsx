@@ -49,9 +49,15 @@ export default function EditProfileScreen() {
         method: 'POST',
         body: { dataBase64: base64, mime: pick.mime },
       });
-      setAvatarUrl(done?.url ?? pick.uri);
+      if (done?.url) {
+        setAvatarUrl(done.url);
+      } else {
+        setError('Photo upload failed. Please try again.');
+      }
     } catch {
-      setAvatarUrl(pick.uri);
+      // Never fall back to the local picker URI (blob:/file://) — it is
+      // not resolvable after restart and breaks avatar rendering.
+      setError('Photo upload failed. Please check your connection and try again.');
     } finally {
       setUploading(false);
     }
@@ -62,7 +68,7 @@ export default function EditProfileScreen() {
     if (fullName.trim().length < 2) { setError('Please enter your full name.'); return; }
     setSaving(true);
     try {
-      await saveProfile({ name: fullName.trim(), nickname: nickname.trim() || undefined, avatarUrl: avatarUrl || undefined });
+      await saveProfile({ name: fullName.trim(), nickname: nickname.trim() || undefined, avatarUrl: avatarUrl && !avatarUrl.startsWith('blob:') ? avatarUrl : undefined });
       router.back();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save changes.');
@@ -82,7 +88,7 @@ export default function EditProfileScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <View style={styles.avatarWrap}>
-          {avatarUrl ? (
+          {avatarUrl && !avatarUrl.startsWith('blob:') ? (
             <Image source={{ uri: avatarUrl }} style={styles.avatar} />
           ) : (
             <View style={[styles.avatarPlaceholder, { backgroundColor: colors.surfaceCard }]}>

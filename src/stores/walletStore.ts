@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { PaymentMethod } from '../types';
+import { apiFetch } from '../services/api/client';
 
 export interface WalletTransaction {
   id: string;
@@ -30,128 +30,102 @@ export interface WalletState {
   isBalanceHidden: boolean;
   transactions: WalletTransaction[];
   refundCredits: RefundCredit[];
+  isLoading: boolean;
 
   // Actions
   toggleBalanceVisibility: () => void;
+  refresh: () => Promise<void>;
   topUp: (amountKobo: number, methodTitle?: string) => Promise<{ success: boolean; reference: string }>;
   debit: (amountKobo: number, description: string, reference: string, bookingId?: string) => boolean;
   addRefundCredit: (amountKobo: number, bookingNumber: string, serviceName: string, reason: string) => void;
 }
 
-const INITIAL_TRANSACTIONS: WalletTransaction[] = [
-  {
-    id: 'tx_wal_001',
-    type: 'credit',
-    category: 'refund',
-    amountKobo: 1250000, // ₦12,500
-    title: 'Refund: Cancelled Booking',
-    description: 'Instant refund for cancelled AC Installation (KB-8789)',
-    reference: 'REF-KB8789-9941',
-    createdAt: '2026-10-04T11:20:00.000Z',
-    status: 'SUCCESS',
-    bookingId: 'job_kb_8789',
-    paymentMethod: 'Instant Wallet Refund',
-  },
-  {
-    id: 'tx_wal_002',
-    type: 'debit',
-    category: 'booking_payment',
-    amountKobo: 1075000, // ₦10,750
-    title: 'Payment: Pipe Leak Repair',
-    description: 'Settled for Booking #KB-8790 with Tunde Adebayo',
-    reference: 'PAY-KB8790-3321',
-    createdAt: '2026-09-28T10:45:00.000Z',
-    status: 'SUCCESS',
-    bookingId: 'job_kb_8790',
-    paymentMethod: 'Kendibo Wallet',
-  },
-  {
-    id: 'tx_wal_003',
-    type: 'credit',
-    category: 'top_up',
-    amountKobo: 3000000, // ₦30,000
-    title: 'Wallet Top-Up: Bachs',
-    description: 'Online card payment funded into wallet',
-    reference: 'TOP-BACHS-882194',
-    createdAt: '2026-09-25T14:10:00.000Z',
-    status: 'SUCCESS',
-    paymentMethod: 'Mastercard •••• 4242',
-  },
-  {
-    id: 'tx_wal_004',
-    type: 'debit',
-    category: 'booking_payment',
-    amountKobo: 1538700, // ₦15,387
-    title: 'Payment: Home Deep Cleaning',
-    description: 'Settled for Booking #KB-8810 with Amaka Eze',
-    reference: 'PAY-KB8810-1092',
-    createdAt: '2026-09-20T09:15:00.000Z',
-    status: 'SUCCESS',
-    bookingId: 'job_kb_8810',
-    paymentMethod: 'Kendibo Wallet',
-  },
-  {
-    id: 'tx_wal_005',
-    type: 'credit',
-    category: 'promo',
-    amountKobo: 500000, // ₦5,000
-    title: 'Welcome Bonus Credit',
-    description: 'Promo credit granted on account creation',
-    reference: 'PROMO-WELCOME-01',
-    createdAt: '2026-09-01T08:00:00.000Z',
-    status: 'SUCCESS',
-    paymentMethod: 'Kendibo Rewards',
-  },
-];
+interface ServerTxn {
+  id: string;
+  kind: 'topup' | 'payment' | 'refund' | 'payout';
+  amountKobo: number;
+  ref: string;
+  bookingId?: string;
+  createdAt: string;
+}
 
-const INITIAL_REFUND_CREDITS: RefundCredit[] = [
-  {
-    id: 'ref_001',
-    bookingNumber: 'KB-8789',
-    serviceName: 'AC Installation & Ducting',
-    amountKobo: 1250000,
-    reason: 'Cancelled before provider dispatch (100% full refund policy)',
-    date: 'Oct 4, 2026',
-    status: 'available',
-  },
-];
+function mapServerTxn(t: ServerTxn): WalletTransaction {
+  const type: 'credit' | 'debit' = t.kind === 'topup' || t.kind === 'refund' ? 'credit' : 'debit';
+  const category: WalletTransaction['category'] =
+    t.kind === 'topup' ? 'top_up' : t.kind === 'refund' ? 'refund' : t.kind === 'payout' ? 'withdrawal' : 'booking_payment';
+  const titles: Record<ServerTxn['kind'], string> = {
+    topup: 'Wallet Top-Up',
+    payment: 'Booking Payment',
+    refund: 'Refund',
+    payout: 'Withdrawal',
+  };
+  return {
+    id: t.id,
+    type,
+    category,
+    amountKobo: t.amountKobo,
+    title: titles[t.kind],
+    description: t.ref,
+    reference: t.ref,
+    createdAt: t.createdAt,
+    status: 'SUCCESS',
+    bookingId: t.bookingId,
+  };
+}
 
 export const useWalletStore = create<WalletState>((set, get) => ({
-  balanceKobo: 4500000, // ₦45,000
+  balanceKobo: 0,
   isBalanceHidden: false,
-  transactions: INITIAL_TRANSACTIONS,
-  refundCredits: INITIAL_REFUND_CREDITS,
+  transactions: [],
+  refundCredits: [],
+  isLoading: false,
 
   toggleBalanceVisibility: () => {
     set((state) => ({ isBalanceHidden: !state.isBalanceHidden }));
   },
 
-  topUp: async (amountKobo: number, methodTitle: string = 'Bachs Checkout') => {
+  refresh: async () => {
+    if (get().isLoading) return;
+    set({ isLoading: true });
     try {
-      // 1. Call backend to initiate Bachs checkout session
-      const { api, newIdemKey } = require('../services/api');
-      const WebBrowser = require('expo-web-browser');
-      
-      const session = await api('/v1/wallet/topup', {
+      const data = await apiFetch<{ balanceKobo: number; txns: ServerTxn[] }>('/v1/wallet');
+      const txns = Array.isArray(data?.txns) ? [...data.txns].reverse().map(mapServerTxn) : [];
+      const refundCredits: RefundCredit[] = txns
+        .filter((t) => t.category === 'refund')
+        .map((t) => ({
+          id: t.id,
+          bookingNumber: t.bookingId ?? t.reference,
+          serviceName: t.description,
+          amountKobo: t.amountKobo,
+          reason: 'Refund credited to wallet',
+          date: t.createdAt,
+          status: 'available' as const,
+        }));
+      set({ balanceKobo: data?.balanceKobo ?? 0, transactions: txns, refundCredits });
+    } catch {
+      // Leave previous state; the wallet screen shows a refresh affordance.
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  topUp: async (amountKobo: number, _methodTitle: string = 'Bachs Checkout') => {
+    try {
+      const session = await apiFetch<{ checkoutUrl?: string; reference?: string }>('/v1/wallet/topup', {
         method: 'POST',
         body: { amountKobo },
-        idempotencyKey: newIdemKey(),
       });
 
-      // 2. Open Bachs payment UI securely
       if (session?.checkoutUrl) {
+        const WebBrowser = require('expo-web-browser');
         const result = await WebBrowser.openBrowserAsync(session.checkoutUrl);
-        // 3. User closes browser or is redirected back via kendibo://
         if (result.type === 'cancel' || result.type === 'dismiss') {
-          return { success: false, reference: session.reference };
+          return { success: false, reference: session.reference ?? '' };
         }
       }
 
-      // We don't artificially bump the balance here because the webhook is the source of truth.
-      // In a real flow, you'd poll `/v1/wallet` or rely on a push notification to update state.
-      // But for UX responsiveness in this demo, we can optimistically bump it or just let the user pull to refresh.
-      // For safety, let's just refresh the whole wallet from the backend!
-      
+      // Webhook is the source of truth — refresh from the backend.
+      await get().refresh();
       return { success: true, reference: session?.reference || '' };
     } catch (err) {
       console.warn('TopUp Error:', err);
@@ -176,7 +150,6 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       createdAt: new Date().toISOString(),
       status: 'SUCCESS',
       bookingId,
-      paymentMethod: 'Kendibo Wallet',
     };
 
     set((state) => ({
@@ -188,9 +161,6 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
 
   addRefundCredit: (amountKobo: number, bookingNumber: string, serviceName: string, reason: string) => {
-    const refSuffix = Math.floor(1000 + Math.random() * 9000);
-    const reference = `REF-${bookingNumber}-${refSuffix}`;
-
     const newRefund: RefundCredit = {
       id: `ref_${Date.now()}`,
       bookingNumber,
@@ -208,10 +178,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       amountKobo,
       title: `Refund: ${bookingNumber}`,
       description: `Refund credited for ${serviceName}`,
-      reference,
+      reference: `REF-${bookingNumber}`,
       createdAt: new Date().toISOString(),
       status: 'SUCCESS',
-      paymentMethod: 'Instant Wallet Refund',
     };
 
     set((state) => ({

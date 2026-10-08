@@ -32,7 +32,8 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Header } from '../../components/ui/Header';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
-import { lightColors as colors, spacing, typography, radii } from '../../constants/theme';
+import { spacing, typography, radii, ColorTokens } from '../../constants/theme';
+import { useAppTheme } from '../_layout';
 import { avatarSource } from '../../constants/images';
 import { formatKoboToNaira } from '../../utils/currency';
 import { formatDateWAT, formatTimeWAT, formatDateTimeWAT } from '../../utils/date';
@@ -84,6 +85,8 @@ const LIFECYCLE_MILESTONES: LifecycleMilestone[] = [
 ];
 
 export default function TrackingDetailScreen() {
+  const { colors } = useAppTheme();
+  const styles = makeStyles(colors);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -416,7 +419,7 @@ export default function TrackingDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ColorTokens) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,

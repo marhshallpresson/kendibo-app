@@ -41,35 +41,6 @@ const DEFAULT_PREFS: NotificationPrefs = {
   tips: false,
 };
 
-const SEED: AppNotification[] = [
-  {
-    id: 'seed-enroute',
-    kind: 'booking',
-    title: 'Technician is on the way',
-    body: 'Babatunde is nearby and will arrive in ~15 minutes for KB-8821.',
-    route: '/tracking/job_kb_8821',
-    read: false,
-    createdAt: Date.now() - 1000 * 60 * 18,
-  },
-  {
-    id: 'seed-promo',
-    kind: 'promo',
-    title: '30% off your first deep clean',
-    body: 'Use code KENDIBO30 at checkout. Valid this week in Uyo.',
-    route: '/search',
-    read: false,
-    createdAt: Date.now() - 1000 * 60 * 60 * 5,
-  },
-  {
-    id: 'seed-system',
-    kind: 'system',
-    title: 'Welcome to Kendibo',
-    body: 'Verified cleaners, plumbers and more — booked in minutes.',
-    read: true,
-    createdAt: Date.now() - 1000 * 60 * 60 * 26,
-  },
-];
-
 interface NotificationState {
   items: AppNotification[];
   prefs: NotificationPrefs;
@@ -106,10 +77,11 @@ export const useNotificationStore = create<NotificationState>()(
           read: false,
           createdAt: Date.now(),
         };
-        set((s) => {
-          const seeded = s.seeded ? s.items : [...SEED, ...s.items];
-          return { items: [item, ...seeded].slice(0, 100), seeded: true, lastAddedAt: Date.now() };
-        });
+        set((s) => ({
+          items: [item, ...s.items].slice(0, 100),
+          seeded: true,
+          lastAddedAt: Date.now(),
+        }));
         return true;
       },
 
@@ -118,8 +90,8 @@ export const useNotificationStore = create<NotificationState>()(
 
       markAllRead: () => set((s) => ({ items: s.items.map((i) => ({ ...i, read: true })) })),
 
-      ensureSeeded: () =>
-        set((s) => (s.seeded ? s : { items: [...SEED, ...s.items], seeded: true })),
+      // No demo seeds — notifications come from live events only.
+      ensureSeeded: () => set((s) => (s.seeded ? s : { seeded: true })),
 
       removeNotification: (id) => set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
 
@@ -129,6 +101,16 @@ export const useNotificationStore = create<NotificationState>()(
     }),
     {
       name: 'KENDIBO_NOTIFICATIONS',
+      version: 1,
+      // v1: strip legacy demo seed notifications on upgrade.
+      migrate: (persisted) => {
+        const p = persisted as { items?: AppNotification[] } | undefined;
+        if (!p) return p as never;
+        return {
+          ...p,
+          items: (p.items ?? []).filter((i) => !String(i.id).startsWith('seed-')),
+        };
+      },
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (s) => ({ items: s.items, prefs: s.prefs, seeded: s.seeded }),
     }

@@ -25,7 +25,7 @@ import {
 } from 'lucide-react-native';
 import { Header, Button, Input, Badge, Modal } from '../../components/ui';
 import { useLocationStore } from '../../stores/locationStore';
-import { useAddresses, useAddAddress, useDeleteAddress } from '../../services/queryClient';
+import { useAddresses, useAddAddress, useDeleteAddress, useUpdateAddress, useSetDefaultAddress } from '../../services/queryClient';
 import { Address } from '../../types';
 import { useAppTheme } from '../_layout';
 import { fonts, radii, spacing } from '../../constants/theme';
@@ -59,6 +59,8 @@ export default function BookingAddressScreen() {
   const { data: liveAddresses = [] } = useAddresses();
   const addAddressMutation = useAddAddress();
   const deleteAddressMutation = useDeleteAddress();
+  const updateAddressMutation = useUpdateAddress();
+  const setDefaultMutation = useSetDefaultAddress();
 
   const addressList: Address[] = liveAddresses.length > 0 ? liveAddresses : savedAddresses;
 
@@ -134,12 +136,9 @@ export default function BookingAddressScreen() {
 
     try {
       if (editingAddressId) {
-        // Backend has no PATCH address route — update the selected address
-        // locally and keep navigation targets unchanged.
-        const saved = addressList.find((a) => a.id === editingAddressId);
-        if (saved) {
-          const next: Address = {
-            ...saved,
+        const updated = await updateAddressMutation.mutateAsync({
+          addressId: editingAddressId,
+          patch: {
             label,
             street,
             houseNumber,
@@ -149,10 +148,13 @@ export default function BookingAddressScreen() {
             gateInstructions,
             contactPhone,
             isDefault,
-          };
-          setAddress(next);
-          setSelectedAddressId(next.id);
+          },
+        });
+        if (isDefault && !updated.isDefault) {
+          await setDefaultMutation.mutateAsync(editingAddressId);
         }
+        setSelectedAddressId(updated.id);
+        setAddress({ ...updated, isDefault });
       } else {
         const newAddress = await addAddressMutation.mutateAsync({
           userId: '',

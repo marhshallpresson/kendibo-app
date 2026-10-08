@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -33,7 +33,8 @@ import {
 import { Header, Button, Card, Badge, EmptyState } from '../../components/ui';
 import { useWalletStore, WalletTransaction } from '../../stores/walletStore';
 import { formatKoboToNaira, nairaToKobo } from '../../utils/currency';
-import { lightColors as colors, radii, spacing, typography, shadows } from '../../constants/theme';
+import { radii, spacing, typography, shadows, ColorTokens } from '../../constants/theme';
+import { useAppTheme } from '../_layout';
 
 type FilterTab = 'all' | 'credits' | 'debits' | 'refunds';
 
@@ -45,6 +46,8 @@ const TOP_UP_PRESETS = [
 ];
 
 export default function WalletScreen() {
+  const { colors } = useAppTheme();
+  const styles = makeStyles(colors);
   const router = useRouter();
   const {
     balanceKobo,
@@ -53,18 +56,21 @@ export default function WalletScreen() {
     refundCredits,
     toggleBalanceVisibility,
     topUp,
+    refresh,
   } = useWalletStore();
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [showTopUpModal, setShowTopUpModal] = useState(false);
   const [selectedTopUpPreset, setSelectedTopUpPreset] = useState<number>(1000000); // ₦10,000 default
   const [customAmountText, setCustomAmountText] = useState('');
   const [isProcessingTopUp, setIsProcessingTopUp] = useState(false);
-  const [topUpMethod, setTopUpMethod] = useState<'bachs' | 'bank_transfer'>('bachs');
+  const topUpMethod = 'bachs';
 
-  // Withdrawal modal state
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
-  const [isProcessingWithdraw, setIsProcessingWithdraw] = useState(false);
+  // Withdrawal modal removed - no backend payout endpoint
 
   // Filtered transactions
   const filteredTransactions = transactions.filter((tx) => {
@@ -89,8 +95,7 @@ export default function WalletScreen() {
     const { requireOnline } = require('../../services/txnGuard');
     if (!(await requireOnline('Wallet top-up'))) return; // button already disabled while processing
     setIsProcessingTopUp(true);
-    const methodLabel = topUpMethod === 'bachs' ? 'Bachs Checkout' : 'Bank Virtual Account';
-    const result = await topUp(finalKobo, methodLabel);
+    const result = await topUp(finalKobo, 'Bachs Checkout');
     setIsProcessingTopUp(false);
     setShowTopUpModal(false);
     setCustomAmountText('');
@@ -103,22 +108,7 @@ export default function WalletScreen() {
     }
   };
 
-  const handleExecuteWithdraw = () => {
-    if (balanceKobo <= 0) {
-      Alert.alert('Empty Balance', 'You do not have sufficient funds to withdraw.');
-      return;
-    }
 
-    setIsProcessingWithdraw(true);
-    setTimeout(() => {
-      setIsProcessingWithdraw(false);
-      setShowWithdrawModal(false);
-      Alert.alert(
-        'Withdrawal Request Initiated',
-        `A payout request has been queued to your registered Zenith Bank account (Chidi Okafor ••2831). Funds typically arrive within 5-15 minutes.`
-      );
-    }, 700);
-  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -185,19 +175,7 @@ export default function WalletScreen() {
               <Text style={styles.heroActionText}>Add Money</Text>
             </Pressable>
 
-            <Pressable
-              onPress={() => setShowWithdrawModal(true)}
-              style={({ pressed }) => [
-                styles.heroActionBtn,
-                pressed && styles.heroActionBtnPressed,
-              ]}
-              accessibilityRole="button"
-            >
-              <View style={styles.heroActionIconCircle}>
-                <ArrowUpRight size={18} color={colors.primary} />
-              </View>
-              <Text style={styles.heroActionText}>Withdraw</Text>
-            </Pressable>
+
 
             <Pressable
               onPress={() => {
@@ -434,45 +412,7 @@ export default function WalletScreen() {
               }}
             />
 
-            {/* Gateway Selector */}
-            <Text style={styles.inputGroupLabel}>Funding Method</Text>
-            <View style={styles.methodChoiceRow}>
-              <Pressable
-                onPress={() => setTopUpMethod('bachs')}
-                style={[
-                  styles.methodChoice,
-                  topUpMethod === 'bachs' && styles.methodChoiceSelected,
-                ]}
-              >
-                <Zap size={18} color={topUpMethod === 'bachs' ? colors.primary : colors.textSecondary} />
-                <Text
-                  style={[
-                    styles.methodChoiceText,
-                    topUpMethod === 'bachs' && styles.methodChoiceTextSelected,
-                  ]}
-                >
-                  Bachs (Instant)
-                </Text>
-              </Pressable>
 
-              <Pressable
-                onPress={() => setTopUpMethod('bank_transfer')}
-                style={[
-                  styles.methodChoice,
-                  topUpMethod === 'bank_transfer' && styles.methodChoiceSelected,
-                ]}
-              >
-                <Building2 size={18} color={topUpMethod === 'bank_transfer' ? colors.primary : colors.textSecondary} />
-                <Text
-                  style={[
-                    styles.methodChoiceText,
-                    topUpMethod === 'bank_transfer' && styles.methodChoiceTextSelected,
-                  ]}
-                >
-                  Virtual Bank
-                </Text>
-              </Pressable>
-            </View>
 
             {/* Action Buttons */}
             <View style={styles.modalActionRow}>
@@ -497,68 +437,12 @@ export default function WalletScreen() {
         </View>
       </Modal>
 
-      {/* Withdrawal Modal */}
-      <Modal
-        visible={showWithdrawModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowWithdrawModal(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalGrabber} />
 
-            <View style={styles.modalTitleRow}>
-              <View style={styles.modalIconWrap}>
-                <ArrowUpRight size={20} color={colors.primary} />
-              </View>
-              <View>
-                <Text style={styles.modalTitle}>Withdraw to Bank</Text>
-                <Text style={styles.modalSubtitle}>Transfer available funds</Text>
-              </View>
-            </View>
-
-            <Card style={styles.bankAccountCard}>
-              <Building2 size={24} color={colors.primary} />
-              <View style={styles.bankAccountInfo}>
-                <Text style={styles.bankName}>Zenith Bank Plc</Text>
-                <Text style={styles.accountNumber}>2088 •••• ••31</Text>
-                <Text style={styles.accountHolder}>Chidi Okafor (Primary Account)</Text>
-              </View>
-              <CheckCircle2 size={18} color={colors.success} />
-            </Card>
-
-            <View style={styles.withdrawSummary}>
-              <Text style={styles.withdrawSummaryLabel}>Withdrawable Balance</Text>
-              <Text style={styles.withdrawSummaryValue}>{formatKoboToNaira(balanceKobo)}</Text>
-            </View>
-
-            <View style={styles.modalActionRow}>
-              <Button
-                title="Cancel"
-                onPress={() => setShowWithdrawModal(false)}
-                variant="outline"
-                size="md"
-                style={{ flex: 1 }}
-              />
-              <Button
-                title={isProcessingWithdraw ? 'Processing...' : 'Withdraw Funds'}
-                onPress={handleExecuteWithdraw}
-                loading={isProcessingWithdraw}
-                disabled={isProcessingWithdraw}
-                variant="primary"
-                size="md"
-                style={{ flex: 1.5 }}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ColorTokens) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,

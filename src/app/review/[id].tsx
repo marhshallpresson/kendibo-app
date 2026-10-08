@@ -28,7 +28,8 @@ import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Header } from '../../components/ui/Header';
 import { Modal } from '../../components/ui/Modal';
-import { lightColors as colors, spacing, typography, radii } from '../../constants/theme';
+import { spacing, typography, radii, ColorTokens } from '../../constants/theme';
+import { useAppTheme } from '../_layout';
 import { resolveImage, avatarSource } from '../../constants/images';
 import { formatDateWAT } from '../../utils/date';
 
@@ -60,6 +61,8 @@ const WARRANTY_ISSUE_CATEGORIES = [
 ];
 
 export default function ReviewScreen() {
+  const { colors } = useAppTheme();
+  const styles = makeStyles(colors);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -420,7 +423,7 @@ export default function ReviewScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ColorTokens) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: colors.background,

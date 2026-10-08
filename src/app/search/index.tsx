@@ -25,6 +25,7 @@ import { useCategories, useSearchServices, useServices } from '../../services/qu
 import { formatKoboToNaira } from '../../utils/currency';
 import { Modal } from '../../components/ui/Modal';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
+import { useBookmarkStore } from '../../stores/bookmarkStore';
 import { Service, Category } from '../../types';
 
 type SortOption = 'recommended' | 'highest_rated' | 'price_low_high' | 'price_high_low' | 'most_popular';
@@ -33,7 +34,8 @@ export default function SearchScreen() {
   const { colors } = useAppTheme();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const bookmarkedIds = useBookmarkStore((s) => s.savedServiceIds);
+  const toggleBookmark = useBookmarkStore((s) => s.toggleBookmark);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
@@ -57,15 +59,6 @@ export default function SearchScreen() {
     if (selectedSort !== 'recommended') count += 1;
     return count;
   }, [selectedCategories, selectedPriceBracket, selectedMinRating, selectedSort]);
-
-  const toggleBookmark = (serviceId: string) => {
-    setBookmarkedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(serviceId)) next.delete(serviceId);
-      else next.add(serviceId);
-      return next;
-    });
-  };
 
   const toggleCategoryFilter = (catId: string) => {
     setSelectedCategories((prev) => {
@@ -227,7 +220,7 @@ export default function SearchScreen() {
                   const providerName =
                     categories.find((c) => c.id === service.categoryId)?.name ||
                     'Verified Pro';
-                  const isBookmarked = bookmarkedIds.has(service.id);
+                  const isBookmarked = bookmarkedIds.includes(service.id);
                   return (
                     <Pressable
                       key={service.id}

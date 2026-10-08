@@ -126,7 +126,7 @@ export default function ProfileScreen() {
             icon: <CreditCard size={22} color={colors.textPrimary} />,
             label: 'Payment',
             onPress: () =>
-              Alert.alert('Payment Methods', 'Mastercard and Bank Transfer enabled for Nigeria.'),
+              Alert.alert('Payment Methods', 'Debit cards and bank transfer via Bachs are enabled for Nigeria.'),
           })}
           {renderRow({
             icon: <ShieldCheck size={22} color={colors.textPrimary} />,

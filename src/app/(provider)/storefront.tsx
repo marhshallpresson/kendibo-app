@@ -1,134 +1,146 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, Pressable, Image } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { Camera, Plus } from 'lucide-react-native';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Star } from 'lucide-react-native';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
-import { Header, Input, Button } from '../../components/ui';
+import { Header, Button, Badge, EmptyState } from '../../components/ui';
+import type { BadgeVariant } from '../../components/ui/Badge';
+import { jobApi } from '@/services/api/jobs';
+import { useProviderProfile } from '@/hooks/useProviderId';
+import { useAuthStore } from '@/stores/authStore';
+
+function kycBadge(kycStatus: string): { label: string; variant: BadgeVariant } {
+  const s = (kycStatus || '').toLowerCase();
+  if (s === 'verified' || s === 'approved') return { label: 'KYC Verified', variant: 'success' };
+  if (s === 'rejected') return { label: 'KYC Rejected', variant: 'error' };
+  if (s === 'pending' || s === 'review' || s === 'in_review') return { label: 'KYC Pending', variant: 'warning' };
+  return { label: 'KYC Not Started', variant: 'neutral' };
+}
 
 export default function StorefrontScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
+  const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
 
-  const [bio, setBio] = useState('Professional technician with 5 years of experience in deep cleaning and home organization.');
-  const [basePrice, setBasePrice] = useState('5000');
-  const [isHourly, setIsHourly] = useState(false);
-  const [gallery, setGallery] = useState<string[]>([]);
-  const [isAvailable, setIsAvailable] = useState(true);
+  const { data: profile, isLoading, isError, refetch } = useProviderProfile();
 
-  const addPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 0.7,
-    });
-    if (!result.canceled) {
-      const uris = result.assets.map(a => a.uri);
-      setGallery(prev => [...prev, ...uris]);
-    }
-  };
+  const onboardMutation = useMutation({
+    mutationFn: () => jobApi.onboard(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['provider-profile'] });
+      qc.invalidateQueries({ queryKey: ['provider-id'] });
+    },
+  });
 
-  const removePhoto = (index: number) => {
-    setGallery(prev => prev.filter((_, i) => i !== index));
-  };
+  const header = <Header title="My Storefront" onBack={() => router.back()} />;
 
-  const handleSave = () => {
-    // In a real app, this would PATCH /provider/storefront
-    alert('Storefront updated successfully!');
-  };
+  if (isLoading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        {header}
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        {header}
+        <EmptyState
+          title="Couldn't load your profile"
+          description="We couldn't fetch your provider profile. Check your connection and try again."
+          buttonTitle="Retry"
+          onButtonPress={() => refetch()}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        {header}
+        <EmptyState
+          title="No provider profile yet"
+          description="Set up your provider profile to start receiving jobs."
+          buttonTitle={onboardMutation.isPending ? 'Creating…' : 'Create provider profile'}
+          onButtonPress={() => onboardMutation.mutate()}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  const kyc = kycBadge(profile.kycStatus);
+  const kycVerified = kyc.variant === 'success';
+  const displayName = profile.displayName ?? user?.name ?? 'Provider';
+  const hasRating = typeof profile.rating === 'number' && profile.rating > 0;
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Header title="Storefront Editor"  />
+      {header}
 
       <ScrollView contentContainerStyle={styles.content}>
-        
-        {/* Availability Toggle */}
+        {/* Identity */}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          <View style={styles.rowBetween}>
-            <View>
-              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Accepting Jobs</Text>
-              <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>Toggle your visibility in search</Text>
-            </View>
-            <Switch
-              value={isAvailable}
-              onValueChange={setIsAvailable}
-              trackColor={{ false: colors.border, true: colors.primaryLight }}
-              thumbColor={isAvailable ? colors.primary : '#f4f3f4'}
+          <Text style={[styles.name, { color: colors.textPrimary }]}>{displayName}</Text>
+          <View style={styles.badgeRow}>
+            <Badge label={kyc.label} variant={kyc.variant} />
+            <Badge
+              label={profile.online ? 'Online' : 'Offline'}
+              variant={profile.online ? 'success' : 'neutral'}
             />
           </View>
+          {hasRating && (
+            <View style={styles.ratingRow}>
+              <Star size={16} color={colors.primary} fill={colors.primary} />
+              <Text style={[styles.ratingText, { color: colors.textPrimary }]}>
+                {profile.rating!.toFixed(1)}
+                {profile.reviewCount ? ` · ${profile.reviewCount} review${profile.reviewCount === 1 ? '' : 's'}` : ''}
+              </Text>
+            </View>
+          )}
         </View>
 
-        {/* Bio Section */}
+        {/* Skills / services */}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>About Me (Bio)</Text>
-          <Input
-            value={bio}
-            onChangeText={setBio}
-            placeholder="Tell customers about your experience..."
-            multiline
-            numberOfLines={4}
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Skills & Services</Text>
+          {profile.skills.length > 0 ? (
+            <View style={styles.chipRow}>
+              {profile.skills.map((skill) => (
+                <View key={skill} style={[styles.chip, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[styles.chipText, { color: colors.primary }]}>{skill}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={[styles.note, { color: colors.textSecondary }]}>No skills added yet.</Text>
+          )}
+          <Text style={[styles.note, { color: colors.textSecondary, marginTop: spacing.md }]}>
+            Services offered to customers are assigned automatically once your categories are qualified.
+          </Text>
+        </View>
+
+        {/* KYC prompt */}
+        {!kycVerified && (
+          <Button
+            title="Complete KYC Verification"
+            onPress={() => router.push('/(provider)/kyc')}
+            size="lg"
           />
-        </View>
+        )}
 
-        {/* Pricing Section */}
-        <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Pricing Structure</Text>
-          <View style={styles.rowBetween}>
-            <Text style={[styles.label, { color: colors.textPrimary }]}>Charge by the hour?</Text>
-            <Switch
-              value={isHourly}
-              onValueChange={setIsHourly}
-              trackColor={{ false: colors.border, true: colors.primaryLight }}
-              thumbColor={isHourly ? colors.primary : '#f4f3f4'}
-            />
-          </View>
-          <View style={{ marginTop: spacing.md }}>
-            <Input
-              label={isHourly ? 'Hourly Rate (₦)' : 'Starting Price (₦)'}
-              value={basePrice}
-              onChangeText={setBasePrice}
-              keyboardType="numeric"
-            />
-          </View>
-        </View>
-
-        {/* Gallery Section */}
-        <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          <View style={styles.rowBetween}>
-            <View>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Portfolio Gallery</Text>
-              <Text style={[styles.cardDesc, { color: colors.textSecondary }]}>Showcase your best work</Text>
-            </View>
-            <Pressable onPress={addPhoto} style={[styles.addButton, { backgroundColor: colors.primaryLight }]}>
-              <Plus size={20} color={colors.primary} />
-            </Pressable>
-          </View>
-          
-          <View style={styles.galleryGrid}>
-            {gallery.map((uri, i) => (
-              <View key={i} style={styles.galleryItem}>
-                <Image source={{ uri }} style={styles.galleryImage} />
-                <Pressable
-                  style={styles.removeBtn}
-                  onPress={() => removePhoto(i)}
-                >
-                  <Text style={styles.removeText}>X</Text>
-                </Pressable>
-              </View>
-            ))}
-            {gallery.length === 0 && (
-              <Pressable onPress={addPhoto} style={[styles.emptyGallery, { borderColor: colors.border }]}>
-                <Camera size={32} color={colors.textSecondary} />
-                <Text style={{ color: colors.textSecondary, marginTop: 8 }}>Add Photos</Text>
-              </Pressable>
-            )}
-          </View>
-        </View>
-
-        <Button title="Save Changes" onPress={handleSave} style={{ marginTop: spacing.lg }} />
+        {/* Edit profile placeholder — no backend endpoint yet */}
+        <Button title="Edit Profile" variant="outline" disabled onPress={() => {}} />
+        <Text style={[styles.placeholderNote, { color: colors.textSecondary }]}>
+          Profile editing is coming soon. Your details are managed during verification.
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -136,7 +148,8 @@ export default function StorefrontScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { padding: spacing.md, gap: spacing.md },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xxl },
   card: {
     padding: spacing.lg,
     borderRadius: radii.lg,
@@ -146,78 +159,23 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 5,
   },
-  rowBetween: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  name: { fontFamily: fonts.bold, fontSize: 22, marginBottom: spacing.sm },
+  badgeRow: { flexDirection: 'row', gap: spacing.sm },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md },
+  ratingText: { fontFamily: fonts.semiBold, fontSize: 14 },
+  sectionTitle: { fontFamily: fonts.bold, fontSize: 18, marginBottom: spacing.md },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: radii.full,
   },
-  cardTitle: {
-    fontFamily: fonts.semiBold,
-    fontSize: 16,
-  },
-  cardDesc: {
+  chipText: { fontFamily: fonts.semiBold, fontSize: 13 },
+  note: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
+  placeholderNote: {
     fontFamily: fonts.regular,
     fontSize: 12,
-    marginTop: 2,
-  },
-  sectionTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 18,
-    marginBottom: spacing.md,
-  },
-  label: {
-    fontFamily: fonts.medium,
-    fontSize: 14,
-  },
-  addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  galleryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: spacing.md,
-  },
-  galleryItem: {
-    width: '30%',
-    aspectRatio: 1,
-    borderRadius: radii.md,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  galleryImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  removeBtn: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  removeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontFamily: fonts.bold,
-  },
-  emptyGallery: {
-    width: '100%',
-    height: 120,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderRadius: radii.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    textAlign: 'center',
+    marginTop: -spacing.xs,
   },
 });
-

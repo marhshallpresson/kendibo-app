@@ -55,7 +55,7 @@ export default function KycBasicInfoScreen() {
               label="Business Name / Full Name"
               value={value}
               onChangeText={onChange}
-              placeholder="e.g. Courtney Henry Shifting"
+              placeholder="Your business or full name"
               error={errors.businessName?.message}
             />
           )}

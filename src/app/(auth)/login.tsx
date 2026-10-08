@@ -149,10 +149,11 @@ export default function LoginScreen() {
       }
       await loginWithGoogle(idToken);
       const pin = useAuthStore.getState().pin;
+      const role = useAuthStore.getState().user?.role;
       if (pin == null) {
         router.replace('/(auth)/biometrics');
       } else {
-        router.replace('/(tabs)');
+        router.replace((role === 'provider' ? '/(provider)' : '/(tabs)') as any);
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Google sign-in failed. Try again.');

@@ -16,7 +16,7 @@ import {
 import { useAppTheme } from '../../_layout';
 import { spacing, radii, shadows, fonts, tileTints } from '../../../constants/theme';
 import { useCategories, useServices } from '../../../services/queryClient';
-import { useCartStore } from '../../../stores';
+import { useCartStore, useBookmarkStore } from '../../../stores';
 import { formatKoboToNaira } from '../../../utils/currency';
 import { Badge } from '../../../components/ui/Badge';
 import { LoadingSkeleton } from '../../../components/ui/LoadingSkeleton';
@@ -31,7 +31,8 @@ export default function CategoryScreen() {
   const cartItems = useCartStore((state) => state.items);
   const addItemToCart = useCartStore((state) => state.addItem);
   const cartTotal = useCartStore((state) => state.total);
-  const [bookmarked, setBookmarked] = useState<Set<string>>(new Set());
+  const bookmarked = useBookmarkStore((state) => state.savedServiceIds);
+  const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
   const [activeSubcategory, setActiveSubcategory] = useState<string>('all');
 
   const { data: categories = [] } = useCategories();
@@ -88,15 +89,6 @@ export default function CategoryScreen() {
   }, [categoryServices, activeSubcategory]);
 
   const isServiceInCart = (serviceId: string) => cartItems.some((item) => item.service.id === serviceId);
-
-  const toggleBookmark = (serviceId: string) => {
-    setBookmarked((prev) => {
-      const next = new Set(prev);
-      if (next.has(serviceId)) next.delete(serviceId);
-      else next.add(serviceId);
-      return next;
-    });
-  };
 
   const handleCheckout = () => {
     // FIX: forward the tapped/cart service so schedule can seed correctly.
@@ -178,7 +170,7 @@ export default function CategoryScreen() {
           <View style={styles.list}>
             {displayedServices.map((service: Service, idx: number) => {
               const inCart = isServiceInCart(service.id);
-              const isMarked = bookmarked.has(service.id);
+              const isMarked = bookmarked.includes(service.id);
               const tint = tileTints[idx % tileTints.length];
               return (
                 <Pressable

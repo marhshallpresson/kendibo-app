@@ -109,6 +109,7 @@ export default function OtpScreen() {
       // Post-login gate: devices without a local PIN set one up first
       // (via biometrics), returning PIN holders go straight to tabs.
       const pin = useAuthStore.getState().pin;
+      const role = useAuthStore.getState().user?.role;
       if (pin == null) {
         router.push({
           pathname: '/(auth)/biometrics',
@@ -119,7 +120,7 @@ export default function OtpScreen() {
           },
         });
       } else {
-        router.replace('/(tabs)');
+        router.replace((role === 'provider' ? '/(provider)' : '/(tabs)') as any);
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Invalid code. Please try again.');

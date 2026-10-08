@@ -5,42 +5,66 @@ import { useRouter } from 'expo-router';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import { Header } from '../../components/ui';
+import { useQuery } from '@tanstack/react-query';
+import { jobApi, ProviderBooking } from '@/services/api/jobs';
+import { useAuthStore } from '@/stores';
+import { formatKoboToNaira } from '@/utils/currency';
 
-const TABS = ['Upcoming', 'Active', 'Completed'];
+const TABS = ['Upcoming', 'Active', 'Completed'] as const;
+type Tab = (typeof TABS)[number];
 
-const DUMMY_JOBS = [
-  { id: '1', title: 'Deep Cleaning - 3 Bedroom', time: '10:00 AM Today', status: 'Active', price: '15000' },
-  { id: '2', title: 'Plumbing - Leak Fix', time: '02:00 PM Tomorrow', status: 'Upcoming', price: '8000' },
-  { id: '3', title: 'AC Repair', time: 'Yesterday', status: 'Completed', price: '20000' },
-];
+const ACTIVE_STATUSES = ['CONFIRMED', 'EN_ROUTE', 'IN_PROGRESS'];
+const COMPLETED_STATUSES = ['COMPLETED'];
+
+function bucketOf(status: string): Tab {
+  const s = status.toUpperCase();
+  if (COMPLETED_STATUSES.includes(s)) return 'Completed';
+  if (ACTIVE_STATUSES.includes(s)) return 'Active';
+  return 'Upcoming';
+}
 
 export default function ProviderBookingsScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('Active');
+  const user = useAuthStore((s) => s.user);
+  const [activeTab, setActiveTab] = useState<Tab>('Active');
 
-  const filteredJobs = DUMMY_JOBS.filter(j => j.status === activeTab);
+  const { data: bookings = [], isLoading } = useQuery({
+    queryKey: ['provider-bookings', user?.id],
+    queryFn: () => jobApi.getBookings(user!.id),
+    enabled: !!user?.id,
+    refetchInterval: 10000,
+  });
 
-  const renderJob = ({ item }: { item: any }) => (
-    <Pressable 
+  const filteredJobs = bookings.filter((b) => bucketOf(b.status) === activeTab);
+
+  const renderJob = ({ item }: { item: ProviderBooking }) => (
+    <Pressable
       style={[styles.jobCard, { backgroundColor: colors.surface }]}
-      onPress={() => router.push(`/(provider)/job/${item.id}` as any)}
+      onPress={() => router.push(`/(provider)/job/${item.id}` as never)}
     >
       <View style={styles.jobHeader}>
-        <Text style={[styles.jobTitle, { color: colors.textPrimary }]}>{item.title}</Text>
-        <Text style={[styles.jobPrice, { color: colors.primary }]}>₦ {item.price}</Text>
+        <Text style={[styles.jobTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+          {item.serviceId}
+        </Text>
+        {!!item.totalKobo && (
+          <Text style={[styles.jobPrice, { color: colors.primary }]}>
+            {formatKoboToNaira(Number(item.totalKobo))}
+          </Text>
+        )}
       </View>
-      <Text style={[styles.jobTime, { color: colors.textSecondary }]}>{item.time}</Text>
+      <Text style={[styles.jobTime, { color: colors.textSecondary }]}>
+        {item.scheduledAt ? new Date(item.scheduledAt).toLocaleString() : item.status}
+      </Text>
     </Pressable>
   );
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Header title="My Jobs"  />
+      <Header title="My Jobs" />
 
-      {/* Tabs */}
       <View style={[styles.tabs, { borderBottomColor: colors.border }]}>
-        {TABS.map(tab => (
+        {TABS.map((tab) => (
           <Pressable
             key={tab}
             style={[styles.tab, activeTab === tab && { borderBottomColor: colors.primary }]}
@@ -50,7 +74,7 @@ export default function ProviderBookingsScreen() {
               style={[
                 styles.tabText,
                 { color: activeTab === tab ? colors.primary : colors.textSecondary },
-                activeTab === tab && { fontFamily: fonts.semiBold }
+                activeTab === tab && { fontFamily: fonts.semiBold },
               ]}
             >
               {tab}
@@ -61,9 +85,10 @@ export default function ProviderBookingsScreen() {
 
       <FlatList
         data={filteredJobs}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         renderItem={renderJob}
         contentContainerStyle={styles.listContent}
+        refreshing={isLoading}
         ListEmptyComponent={
           <View style={styles.emptyState}>
             <Text style={{ color: colors.textSecondary, fontFamily: fonts.medium }}>
@@ -132,7 +157,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 40,
-  }
+  },
 });
-
-

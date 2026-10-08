@@ -2,28 +2,40 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Wallet, Bell, ChevronRight, CheckCircle2 } from 'lucide-react-native';
+import { ChevronRight, CheckCircle2 } from 'lucide-react-native';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import { Header } from '@/components/ui';
 import { useQuery } from '@tanstack/react-query';
 import { jobApi } from '@/services/api/jobs';
 import { useAuthStore } from '@/stores';
+import { useProviderId } from '@/hooks/useProviderId';
+import { formatKoboToNaira } from '@/utils/currency';
 
 export default function ProviderDashboardScreen() {
   const user = useAuthStore(state => state.user);
-  // Using a mocked providerId if not stored in user object for the pilot
-  const providerId = user?.id || 'mock-provider-id';
-  
-  const { data: offers = [], isLoading } = useQuery({
+  const providerId = useProviderId();
+
+  const { data: offers = [] } = useQuery({
     queryKey: ['provider-jobs', providerId],
-    queryFn: () => jobApi.getOffers(providerId),
+    enabled: !!providerId,
+    queryFn: () => jobApi.getOffers(providerId!),
     refetchInterval: 5000,
   });
-  
+
+  const { data: earnings = [] } = useQuery({
+    queryKey: ['provider-earnings', providerId],
+    enabled: !!providerId,
+    queryFn: () => jobApi.getEarnings(providerId!),
+    refetchInterval: 30000,
+  });
+
   const activeJobs = offers.filter(o => o.status === 'accepted');
   const pendingJobs = offers.filter(o => o.status === 'offered');
   const activeJob = activeJobs[0];
+  const todayKobo = earnings
+    .filter((e) => e.createdAt && new Date(e.createdAt).toDateString() === new Date().toDateString())
+    .reduce((acc, e) => acc + Number(e.amountKobo) + Number(e.tipKobo ?? 0), 0);
 
   const { colors } = useAppTheme();
   const router = useRouter();
@@ -36,13 +48,9 @@ export default function ProviderDashboardScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.topBar, { backgroundColor: colors.surface }]}>
         <View>
-          <Text style={[styles.greeting, { color: colors.textSecondary }]}>Good morning,</Text>
-          <Text style={[styles.name, { color: colors.textPrimary }]}>Courtney Henry</Text>
+          <Text style={[styles.greeting, { color: colors.textSecondary }]}>Welcome back,</Text>
+          <Text style={[styles.name, { color: colors.textPrimary }]}>{user?.name || 'Provider'}</Text>
         </View>
-        <Pressable style={styles.iconBtn}>
-          <Bell size={24} color={colors.textPrimary} />
-          <View style={[styles.badge, { backgroundColor: colors.error }]} />
-        </Pressable>
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
@@ -50,7 +58,7 @@ export default function ProviderDashboardScreen() {
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { backgroundColor: colors.primary }]}>
             <Text style={styles.statLabel}>Today&apos;s Earnings</Text>
-            <Text style={styles.statValue}>₦ 25,000</Text>
+            <Text style={styles.statValue}>{formatKoboToNaira(todayKobo)}</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }]}>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Pending Jobs</Text>

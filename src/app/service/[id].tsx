@@ -20,7 +20,7 @@ import {
 import { useAppTheme } from '../_layout';
 import { spacing, radii, shadows, fonts } from '../../constants/theme';
 import { useService } from '../../services/queryClient';
-import { useCartStore } from '../../stores';
+import { useCartStore, useLocationStore } from '../../stores';
 import { formatKoboToNaira } from '../../utils/currency';
 import { Badge } from '../../components/ui/Badge';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
@@ -41,6 +41,7 @@ export default function ServiceDetailScreen() {
   const [likedPreview, setLikedPreview] = useState<Set<string>>(new Set());
 
   const { data: service, isLoading } = useService(id || '');
+  const currentAddress = useLocationStore((state) => state.currentAddress);
 
   const handleShare = async () => {
     if (service) {
@@ -185,7 +186,9 @@ export default function ServiceDetailScreen() {
             <Badge label={service.isQuoteBased ? 'Inspection & Diagnosis' : 'Cleaning'} variant={service.isQuoteBased ? 'warning' : 'info'} size="sm" />
             <MapPin size={14} color={colors.primary} />
             <Text style={[styles.metaAddress, { color: colors.textSecondary, fontFamily: fonts.regular }]} numberOfLines={1}>
-              Ewet Housing Estate, Uyo
+              {currentAddress
+                ? `${currentAddress.street}${currentAddress.city ? `, ${currentAddress.city}` : ''}`
+                : 'Uyo, Akwa Ibom'}
             </Text>
           </View>
           <Text style={[styles.price, { color: colors.primary, fontFamily: fonts.extraBold }]}>

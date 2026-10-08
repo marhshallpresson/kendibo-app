@@ -70,10 +70,15 @@ const URL_TO_KEY: Array<[RegExp, ImageKey]> = [
   [/1544717305-2782549b5136/, 'reviewPhoto'],
 ];
 
+/** blob: URIs are session-only and break after reload (ERR_FILE_NOT_FOUND). */
+function isDeadUri(ref?: string | null): boolean {
+  return !!ref && ref.startsWith('blob:');
+}
+
 /** Resolve anything image-ish to an <Image> source: bundled first, remote fallback. */
 export function resolveImage(ref?: string | number | null): ImageSourcePropType {
   if (typeof ref === 'number') return ref;
-  if (!ref) return IMAGES.cleaningHero;
+  if (!ref || isDeadUri(ref)) return IMAGES.cleaningHero;
   if (ref in IMAGES) return IMAGES[ref as ImageKey];
   for (const [re, key] of URL_TO_KEY) {
     if (re.test(ref)) return IMAGES[key];
@@ -88,7 +93,7 @@ export const IMAGE_KEYS = Object.keys(IMAGES) as ImageKey[];
 
 /** Remote/asset avatar URL wins; bundled default otherwise (never hotlink). */
 export function avatarSource(url?: string | null): ImageSourcePropType {
-  return url ? { uri: url } : IMAGES.avatar1;
+  return url && !isDeadUri(url) ? { uri: url } : IMAGES.avatar1;
 }
 
 /** Server service image wins; bundled default otherwise (never hotlink). */

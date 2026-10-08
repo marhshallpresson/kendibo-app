@@ -59,13 +59,14 @@ export default function ConfirmPinScreen() {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setStorePin(pinToTest);
+      setTimeout(() => {
+        setIsLoading(false);
+        setStorePin(pinToTest);
 
-      // PIN setup complete — session already verified via OTP/Google.
-      router.replace('/(tabs)');
-    }, 400);
+        // PIN setup complete — session already verified via OTP/Google.
+        const role = useAuthStore.getState().user?.role;
+        router.replace((role === 'provider' ? '/(provider)' : '/(tabs)') as any);
+      }, 400);
   };
 
   const styles = React.useMemo(

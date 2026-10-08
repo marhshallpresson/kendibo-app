@@ -19,10 +19,10 @@ export default function PaymentSuccessScreen() {
   }>();
   const { colors } = useAppTheme();
 
-  const bookingId = params.bookingId || 'job_kb_8821';
-  const bookingNumber = params.bookingNumber || 'KB-8821';
-  const amountKobo = params.amountKobo ? parseInt(params.amountKobo, 10) : 2700000;
-  const serviceName = params.serviceName || 'Home Deep Cleaning Service';
+  const bookingId = params.bookingId || '';
+  const bookingNumber = params.bookingNumber || '';
+  const amountKobo = params.amountKobo ? parseInt(params.amountKobo, 10) : 0;
+  const serviceName = params.serviceName || 'Service booking';
 
   const handleViewReceipt = () => {
     router.push({

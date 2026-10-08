@@ -8,7 +8,6 @@ import {
   Pressable,
   Image,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
 import { router } from 'expo-router';
 import {
@@ -23,6 +22,7 @@ import {
   Cpu,
   Tv,
   Paintbrush,
+  Hammer,
   Grid,
   Star,
 } from 'lucide-react-native';
@@ -36,45 +36,20 @@ import {
   tileTintIcons,
 } from '../../constants/theme';
 import { useCategories, useServices } from '../../services/queryClient';
-import { useAuthStore, useLocationStore } from '../../stores';
+import { useAuthStore, useLocationStore, useBookmarkStore } from '../../stores';
 import { formatKoboToNaira } from '../../utils/currency';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Service } from '../../types';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// Promo banners use theme tokens (tinted panel + copy, no photo assets).
-// Backgrounds are assigned in-component from colors.* so dark mode stays automatic.
-const PROMO_BANNERS = [
-  {
-    id: 'promo-1',
-    discount: '30%',
-    title: "Today's Special!",
-    subtitle: 'Get discount for every order, only valid for today.',
-  },
-  {
-    id: 'promo-2',
-    discount: '25%',
-    title: 'Friday Special!',
-    subtitle: 'Get discount for every order, only valid for today.',
-  },
-  {
-    id: 'promo-3',
-    discount: '40%',
-    title: 'New Promo!',
-    subtitle: 'Get discount for every order, only valid for today.',
-  },
-];
 
 export default function HomeFeedScreen() {
   const { colors } = useAppTheme();
   const user = useAuthStore((state) => state.user);
   const currentAddress = useLocationStore((state) => state.currentAddress);
 
-  const [activePromoIndex, setActivePromoIndex] = useState(0);
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('all');
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set());
+  const bookmarkedIds = useBookmarkStore((state) => state.savedServiceIds);
+  const toggleBookmark = useBookmarkStore((state) => state.toggleBookmark);
 
   const {
     data: categories = [],
@@ -95,18 +70,6 @@ export default function HomeFeedScreen() {
     await Promise.all([refetchCategories(), refetchServices()]);
   };
 
-  const toggleBookmark = (serviceId: string) => {
-    setBookmarkedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(serviceId)) {
-        next.delete(serviceId);
-      } else {
-        next.add(serviceId);
-      }
-      return next;
-    });
-  };
-
   const getCategoryIcon = (iconName: string, color: string) => {
     switch (iconName) {
       case 'Sparkles':
@@ -123,6 +86,8 @@ export default function HomeFeedScreen() {
         return <Tv size={24} color={color} />;
       case 'Paintbrush':
         return <Paintbrush size={24} color={color} />;
+      case 'Hammer':
+        return <Hammer size={24} color={color} />;
       default:
         return <Sparkles size={24} color={color} />;
     }
@@ -132,11 +97,8 @@ export default function HomeFeedScreen() {
 
   const userName = user?.name || 'Kendibo User';
   const displayAddress = currentAddress
-    ? `${currentAddress.street}, ${currentAddress.city || 'Uyo'}`
+    ? `${currentAddress.street}, ${currentAddress.city || currentAddress.state || ''}`.replace(/, $/, '')
     : 'Add a service address to get started';
-
-  // Promo backgrounds cycle through theme tokens only (no hardcoded hexes).
-  const promoBackgrounds = [colors.primary, colors.secondary, colors.primaryDark];
 
   return (
     <ScrollView
@@ -167,7 +129,7 @@ export default function HomeFeedScreen() {
 
         <View style={styles.headerIconsRow}>
           <Pressable
-            onPress={() => router.push('/search')}
+            onPress={() => router.push('/notifications')}
             accessibilityRole="button"
             accessibilityLabel="Notifications"
             hitSlop={8}
@@ -177,7 +139,7 @@ export default function HomeFeedScreen() {
             <View style={[styles.notificationDot, { borderColor: colors.background, backgroundColor: colors.error }]} />
           </Pressable>
           <Pressable
-            onPress={() => router.push('/search')}
+            onPress={() => router.push('/saved')}
             accessibilityRole="button"
             accessibilityLabel="Saved services"
             hitSlop={8}
@@ -215,68 +177,7 @@ export default function HomeFeedScreen() {
         <SlidersHorizontal size={20} color={colors.primary} />
       </Pressable>
 
-      {/* 3. Special Offers banner slider */}
-      <View style={styles.sectionWrap}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-            Special Offers
-          </Text>
-          <Pressable onPress={() => router.push('/search')}>
-            <Text style={[styles.sectionSeeAll, { color: colors.primary }]}>
-              See All
-            </Text>
-          </Pressable>
-        </View>
-
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onScroll={(e) => {
-            const slide = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - spacing.md * 2));
-            setActivePromoIndex(slide);
-          }}
-          scrollEventThrottle={16}
-        >
-          {PROMO_BANNERS.map((promo, promoIdx) => (
-            <Pressable
-              key={promo.id}
-              style={[
-                styles.promoCard,
-                { backgroundColor: promoBackgrounds[promoIdx % promoBackgrounds.length], width: SCREEN_WIDTH - spacing.md * 2 },
-              ]}
-              onPress={() => router.push('/search')}
-            >
-              <View style={styles.promoTextCol}>
-                <Text style={styles.promoDiscount}>{promo.discount}</Text>
-                <Text style={styles.promoTitle}>{promo.title}</Text>
-                <Text style={styles.promoSubtitle}>{promo.subtitle}</Text>
-              </View>
-              <View style={styles.promoArt}>
-                <View style={styles.promoCircleA} />
-                <View style={styles.promoCircleB} />
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        <View style={styles.dotsRow}>
-          {PROMO_BANNERS.map((_, i) => (
-            <View
-              key={i}
-              style={[
-                styles.dot,
-                {
-                  backgroundColor: i === activePromoIndex ? colors.primary : colors.border,
-                  width: i === activePromoIndex ? 20 : 6,
-                },
-              ]}
-            />
-          ))}
-        </View>
-      </View>
-
-      {/* 4. 8-service icon grid in tinted circles */}
+      {/* 3. Service categories icon grid in tinted circles */}
       <View style={styles.sectionWrap}>
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
@@ -415,7 +316,7 @@ export default function HomeFeedScreen() {
         ) : (
           <View style={styles.servicesList}>
             {filteredServices.slice(0, 8).map((service: Service) => {
-              const isBookmarked = bookmarkedIds.has(service.id);
+              const isBookmarked = bookmarkedIds.includes(service.id);
               const providerLine =
                 categories.find((c) => c.id === service.categoryId)?.name || 'Verified Pro';
               return (
@@ -581,70 +482,6 @@ const styles = StyleSheet.create({
   sectionSeeAll: {
     fontSize: 13,
     fontFamily: fonts.semiBold,
-  },
-  promoCard: {
-    borderRadius: radii.xl,
-    padding: spacing.lg,
-    minHeight: 150,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: spacing.sm,
-    overflow: 'hidden',
-  },
-  promoTextCol: {
-    flex: 1,
-    zIndex: 1,
-  },
-  promoDiscount: {
-    fontSize: 40,
-    fontFamily: fonts.black,
-    color: '#FFFFFF',
-  },
-  promoTitle: {
-    fontSize: 17,
-    fontFamily: fonts.display,
-    color: '#FFFFFF',
-    marginTop: 2,
-  },
-  promoSubtitle: {
-    fontSize: 11,
-    fontFamily: fonts.regular,
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginTop: 4,
-    lineHeight: 15,
-  },
-  promoArt: {
-    width: 110,
-    height: 130,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  promoCircleA: {
-    position: 'absolute',
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    right: -30,
-  },
-  promoCircleB: {
-    position: 'absolute',
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    right: 0,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-    gap: 6,
-  },
-  dot: {
-    height: 6,
-    borderRadius: 3,
   },
   categoriesSkeletonRow: {
     flexDirection: 'row',

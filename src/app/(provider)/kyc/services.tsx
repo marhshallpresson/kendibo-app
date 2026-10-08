@@ -1,39 +1,30 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Check } from 'lucide-react-native';
-import { Header, Button } from '../../../components/ui';
+import { Header, Button, EmptyState } from '../../../components/ui';
 import { useAppTheme } from '../../_layout';
 import { fonts, spacing, radii } from '../../../constants/theme';
 import { useKycStore } from '../../../stores/kycStore';
-
-const AVAILABLE_SERVICES = [
-  'Cleaning',
-  'Repairing',
-  'Painting',
-  'Laundry',
-  'Appliance',
-  'Plumbing',
-  'Shifting',
-];
+import { useCategories } from '../../../services/queryClient';
 
 export default function KycServicesScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const { services, setServices } = useKycStore();
+  const { data: categories = [], isLoading, isError, refetch } = useCategories();
 
-  const toggleService = (svc: string) => {
-    if (services.includes(svc)) {
-      setServices(services.filter((s) => s !== svc));
+  const toggleService = (id: string) => {
+    if (services.includes(id)) {
+      setServices(services.filter((s) => s !== id));
     } else {
-      setServices([...services, svc]);
+      setServices([...services, id]);
     }
   };
 
   const handleNext = () => {
     if (services.length === 0) {
-      alert('Please select at least one service category.');
       return;
     }
     router.push('/(provider)/kyc/documents');
@@ -49,37 +40,62 @@ export default function KycServicesScreen() {
           Select all the service categories you provide.
         </Text>
 
-        <View style={styles.grid}>
-          {AVAILABLE_SERVICES.map((svc) => {
-            const isSelected = services.includes(svc);
-            return (
-              <Pressable
-                key={svc}
-                onPress={() => toggleService(svc)}
-                style={[
-                  styles.card,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                  isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
-                ]}
-              >
-                <Text
+        {isLoading ? (
+          <ActivityIndicator style={{ marginVertical: spacing.xl }} color={colors.primary} />
+        ) : isError ? (
+          <EmptyState
+            title="Couldn't load categories"
+            description="We couldn't fetch the service catalog. Please try again."
+            buttonTitle="Retry"
+            onButtonPress={() => refetch()}
+          />
+        ) : categories.length === 0 ? (
+          <EmptyState
+            title="No categories available"
+            description="The service catalog is empty right now. Please check back soon."
+          />
+        ) : (
+          <View style={styles.grid}>
+            {categories.map((cat) => {
+              const isSelected = services.includes(cat.id);
+              return (
+                <Pressable
+                  key={cat.id}
+                  onPress={() => toggleService(cat.id)}
                   style={[
-                    styles.cardText,
-                    { color: colors.textPrimary },
-                    isSelected && { color: colors.primary, fontFamily: fonts.bold },
+                    styles.card,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    isSelected && { borderColor: colors.primary, backgroundColor: colors.primaryLight },
                   ]}
                 >
-                  {svc}
-                </Text>
-                {isSelected && <Check size={16} color={colors.primary} />}
-              </Pressable>
-            );
-          })}
-        </View>
+                  <Text
+                    style={[
+                      styles.cardText,
+                      { color: colors.textPrimary },
+                      isSelected && { color: colors.primary, fontFamily: fonts.bold },
+                    ]}
+                  >
+                    {cat.name}
+                  </Text>
+                  {isSelected && <Check size={16} color={colors.primary} />}
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+
+        <Text style={[styles.note, { color: colors.textSecondary }]}>
+          Your final service offerings are confirmed after category qualification during verification.
+        </Text>
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button title="Continue to Documents" onPress={handleNext} size="lg" />
+        <Button
+          title="Continue to Documents"
+          onPress={handleNext}
+          size="lg"
+          disabled={services.length === 0}
+        />
       </View>
     </SafeAreaView>
   );
@@ -112,6 +128,12 @@ const styles = StyleSheet.create({
   cardText: {
     fontFamily: fonts.medium,
     fontSize: 16,
+  },
+  note: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    marginTop: spacing.lg,
+    lineHeight: 17,
   },
   footer: {
     padding: spacing.xl,

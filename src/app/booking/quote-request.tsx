@@ -1,75 +1,111 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, SafeAreaView, Platform, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet, SafeAreaView, Platform, Alert, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Camera, Check, ShieldCheck, Info, X, MapPin } from 'lucide-react-native';
+import { useMutation } from '@tanstack/react-query';
+import { ArrowLeft, ShieldCheck, Info, X, MapPin, Camera } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAppTheme } from '../_layout';
 import { radii, spacing, fonts, shadows } from '../../constants/theme';
 import { useLocationStore } from '../../stores/locationStore';
-import { formatKoboToNaira } from '../../utils/currency';
-
-const CATEGORIES = [
-  'Air Conditioning & Refrigeration',
-  'Heavy Generator & Power',
-  'Complex Plumbing & Drain',
-  'Electrical & Inverter Systems',
-  'Appliance Diagnostics',
-];
+import { useCategories } from '../../services/queryClient';
+import { apiFetch, ApiError } from '../../services/api/client';
+import { pickEvidence, uriToBase64 } from '../../utils/images';
+import { useAuthStore } from '../../stores/authStore';
 
 const URGENCIES = [
-  { id: 'STANDARD', label: 'Standard', time: 'Within 24-48 hrs', fee: 'Free callout on repair' },
-  { id: 'URGENT', label: 'Priority', time: 'Within 4-6 hrs', fee: 'Fast track dispatch' },
-  { id: 'EMERGENCY', label: 'Emergency', time: 'Within 90 mins', fee: 'Immediate technician' },
+  { id: 'this_week' as const, label: 'Standard', time: 'Within 24-48 hrs', fee: 'Free callout on repair' },
+  { id: 'today' as const, label: 'Priority', time: 'Within 4-6 hrs', fee: 'Fast track dispatch' },
+  { id: 'emergency' as const, label: 'Emergency', time: 'Within 90 mins', fee: 'Immediate technician' },
 ];
 
 export default function QuoteRequestScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const { currentAddress } = useLocationStore();
+  const user = useAuthStore((s) => s.user);
 
-  const [selectedCategory, setSelectedCategory] = useState<string>(CATEGORIES[0]);
-  const [urgency, setUrgency] = useState<string>('STANDARD');
-  const [equipmentBrand, setEquipmentBrand] = useState<string>('Panasonic / LG');
-  const [equipmentCapacity, setEquipmentCapacity] = useState<string>('1.5 HP Inverter Split Unit');
-  const [symptomDescription, setSymptomDescription] = useState<string>(
-    'AC blower runs continuously but blows ambient warm air. Strange humming noise from outdoor compressor unit and ice forming on copper pipe.'
-  );
-  const [photos, setPhotos] = useState<Array<{ id: string; name: string; size: string }>>([
-    { id: 'p1', name: 'outdoor_unit_copper_frost.jpg', size: '2.4 MB' },
-    { id: 'p2', name: 'indoor_display_code.jpg', size: '1.8 MB' },
-  ]);
-  const [submitting, setSubmitting] = useState<boolean>(false);
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
 
-  const handleAddMockPhoto = () => {
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [categoryName, setCategoryName] = useState<string>('');
+  const [urgency, setUrgency] = useState<(typeof URGENCIES)[number]['id']>('this_week');
+  const [equipmentBrand, setEquipmentBrand] = useState('');
+  const [equipmentCapacity, setEquipmentCapacity] = useState('');
+  const [symptomDescription, setSymptomDescription] = useState('');
+  const [photos, setPhotos] = useState<{ uri: string; url: string }[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const submitRequest = useMutation({
+    mutationFn: async () => {
+      const equipment = [equipmentBrand.trim(), equipmentCapacity.trim()].filter(Boolean).join(' — ');
+      const details = [
+        symptomDescription.trim(),
+        equipment ? `Equipment: ${equipment}` : null,
+      ].filter(Boolean).join('\n\n');
+      return apiFetch<{ id: string }>('/v1/service-requests', {
+        method: 'POST',
+        body: {
+          serviceId: categoryId ?? undefined,
+          title: categoryName || 'Diagnostic quote request',
+          details,
+          urgency,
+          addressId: currentAddress?.id ?? undefined,
+          contactName: user?.name ?? undefined,
+          contactPhone: currentAddress?.contactPhone || user?.phone || undefined,
+          contactEmail: user?.email ?? undefined,
+          notes: photos.length > 0 ? `Photos: ${photos.map((p) => p.url).join(', ')}` : undefined,
+        },
+      });
+    },
+    onSuccess: (data) => {
+      router.replace({ pathname: '/booking/quote-review', params: { requestId: data.id } });
+    },
+    onError: (err) => {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : err instanceof TypeError
+            ? 'You appear to be offline. Check your connection and try again.'
+            : 'Could not submit your request. Please try again.';
+      Alert.alert('Request not sent', message);
+    },
+  });
+
+  const handleAddPhoto = async () => {
     if (photos.length >= 4) {
-      Alert.alert('Limit Reached', 'You can upload up to 4 diagnostic photos/videos.');
+      Alert.alert('Limit Reached', 'You can upload up to 4 diagnostic photos.');
       return;
     }
-    const newId = `p_${Date.now()}`;
-    setPhotos([...photos, { id: newId, name: `diagnostic_snap_${photos.length + 1}.jpg`, size: '2.1 MB' }]);
+    const pick = await pickEvidence('library');
+    if (!pick) return;
+    setUploading(true);
+    try {
+      const base64 = await uriToBase64(pick.uri);
+      const done = await apiFetch<{ url?: string }>('/v1/media/ingest', {
+        method: 'POST',
+        body: { dataBase64: base64, mime: pick.mime },
+      });
+      setPhotos((prev) => [...prev, { uri: pick.uri, url: done?.url ?? pick.uri }]);
+    } catch {
+      setPhotos((prev) => [...prev, { uri: pick.uri, url: pick.uri }]);
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const handleRemovePhoto = (id: string) => {
-    setPhotos(photos.filter((p) => p.id !== id));
+  const handleRemovePhoto = (uri: string) => {
+    setPhotos((prev) => prev.filter((p) => p.uri !== uri));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!symptomDescription.trim()) {
       Alert.alert('Required', 'Please describe the problem symptoms.');
       return;
     }
-    setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      router.push({
-        pathname: '/booking/quote-review',
-        params: {
-          category: selectedCategory,
-          equipment: `${equipmentBrand} - ${equipmentCapacity}`,
-        },
-      });
-    }, 600);
+    const { requireOnline } = require('../../services/txnGuard');
+    if (!(await requireOnline('Quote request'))) return;
+    submitRequest.mutate();
   };
 
   return (
@@ -86,7 +122,6 @@ export default function QuoteRequestScreen() {
         <Text style={[styles.headerTitle, { color: colors.textPrimary, fontFamily: fonts.bold }]}>Book a visit</Text>
         <View style={{ width: 42 }} />
       </View>
-      {/* Book-a-visit progress (mockups 1-5): step 1 active */}
       <View style={styles.progressRow}>
         {[0, 1, 2, 3, 4].map((i) => (
           <View
@@ -114,23 +149,30 @@ export default function QuoteRequestScreen() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: fonts.bold }]}>Service Category</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {CATEGORIES.map((cat) => {
-            const active = selectedCategory === cat;
-            return (
-              <Pressable
-                key={cat}
-                onPress={() => setSelectedCategory(cat)}
-                style={[
-                  styles.catChip,
-                  active ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.surface, borderColor: colors.border },
-                ]}
-              >
-                <Text style={[styles.catChipText, { color: active ? '#FFFFFF' : colors.textPrimary, fontFamily: fonts.semiBold }]}>{cat}</Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        {categoriesLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginVertical: spacing.md }} />
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+            {categories.map((cat) => {
+              const active = categoryId === cat.id;
+              return (
+                <Pressable
+                  key={cat.id}
+                  onPress={() => {
+                    setCategoryId(cat.id);
+                    setCategoryName(cat.name);
+                  }}
+                  style={[
+                    styles.catChip,
+                    active ? { backgroundColor: colors.primary, borderColor: colors.primary } : { backgroundColor: colors.surface, borderColor: colors.border },
+                  ]}
+                >
+                  <Text style={[styles.catChipText, { color: active ? '#FFFFFF' : colors.textPrimary, fontFamily: fonts.semiBold }]}>{cat.name}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
 
         <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: fonts.bold }]}>2. Urgency & address</Text>
         <View style={styles.urgencyGrid}>
@@ -145,10 +187,7 @@ export default function QuoteRequestScreen() {
                   active ? { backgroundColor: colors.primaryLight, borderColor: colors.primary } : { backgroundColor: colors.surface, borderColor: colors.border },
                 ]}
               >
-                <View style={styles.urgencyHeader}>
-                  <Text style={[styles.urgencyLabel, { color: active ? colors.primary : colors.textPrimary, fontFamily: fonts.bold }]}>{u.label}</Text>
-                  {active && <Check size={16} color={colors.primary} />}
-                </View>
+                <Text style={[styles.urgencyLabel, { color: active ? colors.primary : colors.textPrimary, fontFamily: fonts.bold }]}>{u.label}</Text>
                 <Text style={[styles.urgencyTime, { color: colors.textSecondary, fontFamily: fonts.regular }]}>{u.time}</Text>
                 <Text style={[styles.urgencyFee, { color: colors.textMuted, fontFamily: fonts.regular }]}>{u.fee}</Text>
               </Pressable>
@@ -156,17 +195,22 @@ export default function QuoteRequestScreen() {
           })}
         </View>
 
-        <View style={[styles.locCard, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
+        <Pressable
+          style={[styles.locCard, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
+          onPress={() => router.push('/booking/address')}
+        >
           <MapPin size={18} color={colors.primary} />
           <View style={styles.locMeta}>
             <Text style={[styles.locStreet, { color: colors.textPrimary, fontFamily: fonts.bold }]}>
-              {currentAddress ? `${currentAddress.street}, ${currentAddress.landmark}` : '14 Oron Road, Ewet Housing Estate, Uyo'}
+              {currentAddress ? `${currentAddress.street}${currentAddress.landmark ? `, ${currentAddress.landmark}` : ''}` : 'Add a service address'}
             </Text>
-            <Text style={[styles.locPhone, { color: colors.textSecondary, fontFamily: fonts.regular }]}>
-              {currentAddress?.contactPhone || '+234 801 234 5678'}
-            </Text>
+            {!!currentAddress?.contactPhone && (
+              <Text style={[styles.locPhone, { color: colors.textSecondary, fontFamily: fonts.regular }]}>
+                {currentAddress.contactPhone}
+              </Text>
+            )}
           </View>
-        </View>
+        </Pressable>
 
         <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: fonts.bold }]}>Equipment Details</Text>
         <Input label="Brand / Manufacturer" value={equipmentBrand} onChangeText={setEquipmentBrand} placeholder="e.g. Thermocool, LG, Mikano, Daikin" />
@@ -183,27 +227,34 @@ export default function QuoteRequestScreen() {
         />
 
         <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: fonts.bold }]}>Photos / Videos</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: fonts.bold }]}>Photos</Text>
           <Text style={[styles.photoCountText, { color: colors.textSecondary, fontFamily: fonts.regular }]}>{photos.length}/4 uploaded</Text>
         </View>
         <View style={styles.photoList}>
           {photos.map((item) => (
-            <View key={item.id} style={[styles.photoItem, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}>
-              <Camera size={16} color={colors.primary} />
-              <View style={styles.photoMeta}>
-                <Text style={[styles.photoName, { color: colors.textPrimary, fontFamily: fonts.semiBold }]} numberOfLines={1}>{item.name}</Text>
-                <Text style={[styles.photoSize, { color: colors.textMuted, fontFamily: fonts.regular }]}>{item.size}</Text>
-              </View>
-              <Pressable onPress={() => handleRemovePhoto(item.id)} hitSlop={8} style={styles.removePhotoBtn}>
+            <View key={item.uri} style={[styles.photoItem, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}>
+              <Image source={{ uri: item.uri }} style={styles.photoThumb} />
+              <Pressable onPress={() => handleRemovePhoto(item.uri)} hitSlop={8} style={styles.removePhotoBtn}>
                 <X size={16} color={colors.textSecondary} />
               </Pressable>
             </View>
           ))}
           {photos.length < 4 && (
-            <Pressable onPress={handleAddMockPhoto} style={[styles.addPhotoCard, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]} accessibilityRole="button">
-              <Camera size={22} color={colors.primary} />
-              <Text style={[styles.addPhotoText, { color: colors.primary, fontFamily: fonts.bold }]}>Tap to add photo / video</Text>
-              <Text style={[styles.addPhotoSub, { color: colors.textMuted, fontFamily: fonts.regular }]}>JPG, PNG, MP4 up to 15MB</Text>
+            <Pressable
+              onPress={handleAddPhoto}
+              disabled={uploading}
+              style={[styles.addPhotoCard, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}
+              accessibilityRole="button"
+            >
+              {uploading ? (
+                <ActivityIndicator color={colors.primary} />
+              ) : (
+                <>
+                  <Camera size={22} color={colors.primary} />
+                  <Text style={[styles.addPhotoText, { color: colors.primary, fontFamily: fonts.bold }]}>Tap to add photo</Text>
+                  <Text style={[styles.addPhotoSub, { color: colors.textMuted, fontFamily: fonts.regular }]}>JPG or PNG</Text>
+                </>
+              )}
             </Pressable>
           )}
         </View>
@@ -211,18 +262,19 @@ export default function QuoteRequestScreen() {
         <View style={[styles.calloutPolicyBox, { backgroundColor: colors.primaryLight }]}>
           <Info size={16} color={colors.primary} />
           <Text style={[styles.calloutPolicyText, { color: colors.primaryDark, fontFamily: fonts.regular }]}>
-            Diagnostic inspection fee is ₦3,000 (300,000 kobo). Deducted from your final bill when you approve the repair.
+            A pro will inspect and send an itemized quote. You approve before any paid work begins.
           </Text>
         </View>
         <View style={{ height: 110 }} />
       </ScrollView>
 
       <View style={[styles.bottomBar, { backgroundColor: colors.surface, borderTopColor: colors.borderSubtle }]}>
-        <View style={styles.bottomFee}>
-          <Text style={[styles.bottomFeeLabel, { color: colors.textSecondary, fontFamily: fonts.regular }]}>Diagnostic Callout:</Text>
-          <Text style={[styles.bottomFeeValue, { color: colors.primary, fontFamily: fonts.extraBold }]}>{formatKoboToNaira(300000)}</Text>
-        </View>
-        <Button title={submitting ? 'Dispatching...' : 'Request Now'} loading={submitting} onPress={handleSubmit} style={styles.submitBtn} />
+        <Button
+          title={submitRequest.isPending ? 'Dispatching…' : 'Request Now'}
+          loading={submitRequest.isPending}
+          onPress={handleSubmit}
+          style={styles.submitBtn}
+        />
       </View>
     </SafeAreaView>
   );
@@ -256,21 +308,18 @@ const styles = StyleSheet.create({
   catChipText: { fontSize: 12 },
   urgencyGrid: { flexDirection: 'row', gap: spacing.xs },
   urgencyCard: { flex: 1, padding: spacing.sm, borderRadius: 20, borderWidth: 1.5 },
-  urgencyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  urgencyLabel: { fontSize: 12 },
+  urgencyLabel: { fontSize: 12, marginBottom: 2 },
   urgencyTime: { fontSize: 10, marginBottom: 2 },
   urgencyFee: { fontSize: 9 },
   locCard: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, borderRadius: 20, borderWidth: 1, padding: spacing.md, marginTop: spacing.md },
   locMeta: { flex: 1 },
   locStreet: { fontSize: 13 },
   locPhone: { fontSize: 12 },
-  photoList: { gap: spacing.xs, marginTop: 4 },
-  photoItem: { flexDirection: 'row', alignItems: 'center', padding: spacing.sm, borderRadius: 16, borderWidth: 1, gap: spacing.sm },
-  photoMeta: { flex: 1 },
-  photoName: { fontSize: 12 },
-  photoSize: { fontSize: 10 },
-  removePhotoBtn: { padding: 4 },
-  addPhotoCard: { padding: spacing.md, borderRadius: 20, borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
+  photoList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: 4 },
+  photoItem: { position: 'relative', borderRadius: 16, borderWidth: 1, padding: 4 },
+  photoThumb: { width: 72, height: 72, borderRadius: 12 },
+  removePhotoBtn: { position: 'absolute', top: -6, right: -6, backgroundColor: '#B3261E', borderRadius: 10, padding: 2 },
+  addPhotoCard: { padding: spacing.md, borderRadius: 20, borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', minWidth: 110 },
   addPhotoText: { fontSize: 13, marginTop: 4 },
   addPhotoSub: { fontSize: 12, marginTop: 2 },
   calloutPolicyBox: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, padding: spacing.md, borderRadius: 20, marginTop: spacing.md, marginBottom: spacing.lg },
@@ -283,15 +332,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: Platform.OS === 'ios' ? spacing.lg : spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
     borderTopWidth: 1,
     ...shadows.lg,
   },
-  bottomFee: { flex: 1 },
-  bottomFeeLabel: { fontSize: 12 },
-  bottomFeeValue: { fontSize: 16 },
-  submitBtn: { flex: 1.3 },
+  submitBtn: { width: '100%' },
 });

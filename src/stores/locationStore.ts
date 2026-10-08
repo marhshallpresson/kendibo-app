@@ -13,29 +13,10 @@ export interface LocationState {
   removeSavedAddress: (addressId: string) => void;
 }
 
-const defaultUyoAddress: Address = {
-  id: 'addr-uyo-default',
-  userId: 'user-current',
-  label: 'Home',
-  street: '14 Ewet Housing Estate',
-  houseNumber: '14',
-  estate: 'Ewet Housing Estate',
-  landmark: 'Near Ibom Hall',
-  gateInstructions: 'Call host on arrival at the gate',
-  contactPhone: '+234 801 234 5678',
-  isDefault: true,
-  city: 'Uyo',
-  state: 'Akwa Ibom',
-  coordinates: {
-    latitude: 5.0377,
-    longitude: 7.9128,
-  },
-};
-
 export const useLocationStore = create<LocationState>((set, get) => ({
-  currentAddress: defaultUyoAddress,
+  currentAddress: null,
   selectedCity: 'Uyo',
-  savedAddresses: [defaultUyoAddress],
+  savedAddresses: [],
 
   setAddress: (address) => {
     set({

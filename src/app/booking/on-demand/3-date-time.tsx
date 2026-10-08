@@ -5,26 +5,34 @@ import { useOnDemandStore } from '../../../stores/onDemandStore';
 import { theme } from '../../../constants/theme';
 import { Button } from '../../../components/ui/Button';
 
-const DATES = [
-  { id: '2026-10-07', label: 'Tomorrow, Oct 7' },
-  { id: '2026-10-08', label: 'Wed, Oct 8' },
-  { id: '2026-10-09', label: 'Thu, Oct 9' },
-];
-
 const TIMES = [
   '08:00 - 10:00', '10:00 - 12:00', '12:00 - 14:00', '14:00 - 16:00', '16:00 - 18:00'
 ];
 
+function nextDays(count: number): { id: string; label: string }[] {
+  const out: { id: string; label: string }[] = [];
+  const now = new Date();
+  for (let i = 1; i <= count; i++) {
+    const d = new Date(now.getTime() + i * 24 * 60 * 60 * 1000);
+    const iso = d.toISOString().slice(0, 10);
+    const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+    out.push({ id: iso, label: `${i === 1 ? 'Tomorrow' : weekday}, ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` });
+  }
+  return out;
+}
+
 export default function DateTimeScreen() {
   const router = useRouter();
-  const setSchedule = useOnDemandStore((s) => s.setSchedule);
-  
+  const setWindow = useOnDemandStore((s) => s.setWindow);
+
   const [date, setDate] = useState<string | null>(null);
   const [time, setTime] = useState<string | null>(null);
 
+  const dates = React.useMemo(() => nextDays(5), []);
+
   const handleNext = () => {
     if (!date || !time) return;
-    setSchedule(`${date}T${time.split(' ')[0]}:00Z`);
+    setWindow(date, time);
     router.push('/booking/on-demand/4-contact');
   };
 
@@ -32,7 +40,7 @@ export default function DateTimeScreen() {
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <Text style={styles.sectionTitle}>Select a date</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dateList}>
-        {DATES.map((d) => (
+        {dates.map((d) => (
           <TouchableOpacity 
             key={d.id} 
             style={[styles.dateCard, date === d.id && styles.activeCard]}

@@ -163,7 +163,7 @@ export default function BookingCartScreen() {
           <View style={styles.homeMeta}>
             <Text style={[styles.homeTitle, { color: colors.textPrimary, fontFamily: fonts.bold }]}>Home</Text>
             <Text style={[styles.homeSub, { color: colors.textSecondary, fontFamily: fonts.regular }]} numberOfLines={2}>
-              {currentAddress ? `${currentAddress.street}, ${currentAddress.estate || currentAddress.city || 'Uyo'}` : '14 Oron Road, Ewet Housing Estate, Uyo'}
+              {currentAddress ? `${currentAddress.street}, ${currentAddress.estate || currentAddress.city || currentAddress.state || ''}`.replace(/, $/, '') : 'Add a service address to continue'}
             </Text>
           </View>
         </View>
@@ -206,7 +206,7 @@ export default function BookingCartScreen() {
           <View style={styles.snapshotRow}>
             <MapPin size={14} color={colors.primary} />
             <Text style={[styles.snapshotText, { color: colors.textSecondary, fontFamily: fonts.regular }]} numberOfLines={1}>
-              {currentAddress ? `${currentAddress.street}, ${currentAddress.estate || currentAddress.city || 'Uyo'}` : '14 Oron Road, Ewet Housing Estate, Uyo'}
+              {currentAddress ? `${currentAddress.street}, ${currentAddress.estate || currentAddress.city || currentAddress.state || ''}`.replace(/, $/, '') : 'Add a service address to continue'}
             </Text>
           </View>
           {!!searchParams.instructions && (

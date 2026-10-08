@@ -264,8 +264,8 @@ export default function SettingsIndexScreen() {
             Q: What payment methods are supported?
           </Text>
           <Text style={[styles.faqAnswer, { color: colors.textSecondary }]}>
-            We support Nigerian debit cards (Mastercard, Visa, Verve), dynamic virtual bank
-            transfers via Bachs, USSD, and KENDIBO wallet balances.
+            Payments are processed securely via Bachs. You can pay with Nigerian debit cards,
+            dynamic virtual bank transfers, and KENDIBO wallet balances.
           </Text>
 
           <Text style={[styles.faqQuestion, { color: colors.textPrimary }]}>

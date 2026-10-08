@@ -134,7 +134,7 @@ export default function BookingScheduleScreen() {
             <Text style={[styles.addressLabel, { color: colors.textPrimary, fontFamily: fonts.bold }]} numberOfLines={1}>
               {currentAddress
                 ? `${currentAddress.houseNumber ? currentAddress.houseNumber + ', ' : ''}${currentAddress.street}`
-                : '14 Oron Road, Ewet Housing Estate'}
+                : 'Add a service address'}
             </Text>
             <Text style={[styles.addressSub, { color: colors.textSecondary, fontFamily: fonts.regular }]} numberOfLines={1}>
               {formatDateWAT(selectedDate)} • {selectedSlot?.time || '10:00 AM - 12:00 PM'}

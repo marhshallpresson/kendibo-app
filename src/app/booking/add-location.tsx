@@ -14,15 +14,15 @@ export default function AddLocationScreen() {
   const { colors } = useAppTheme();
   const { currentAddress } = useLocationStore();
   
-  // Default coordinates (e.g. New York or User's current location)
+  // Default to Uyo (KENDIBO's service city) when no current address exists.
   const [region, setRegion] = useState({
-    latitude: currentAddress?.coordinates?.latitude || 40.7128,
-    longitude: currentAddress?.coordinates?.longitude || -74.0060,
+    latitude: currentAddress?.coordinates?.latitude || 5.0377,
+    longitude: currentAddress?.coordinates?.longitude || 7.9128,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   });
 
-  const [addressText, setAddressText] = useState('267 New Avenue Park, New York');
+  const [addressText, setAddressText] = useState('');
 
   const handleContinue = () => {
     // Navigate back to address manager with selected location

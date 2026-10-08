@@ -20,10 +20,13 @@ import {
 } from 'lucide-react-native';
 import { useBooking } from '../../../services/queryClient';
 import { Booking } from '../../../types';
-import { darkColors as colors, spacing, typography, radii } from '../../../constants/theme';
+import { spacing, typography, radii, ColorTokens } from '../../../constants/theme';
+import { useAppTheme } from '../../_layout';
 import { avatarSource } from '../../../constants/images';
 
 export default function VoiceCallScreen() {
+  const { colors } = useAppTheme();
+  const styles = makeStyles(colors);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
@@ -165,7 +168,7 @@ export default function VoiceCallScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ColorTokens) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#121418',

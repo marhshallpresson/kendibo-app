@@ -35,7 +35,7 @@ export default function EReceiptScreen() {
   }>();
   const { colors } = useAppTheme();
 
-  const bookingId = params.id || 'job_kb_8821';
+  const bookingId = params.id || '';
   const { currentAddress } = useLocationStore();
   const [isDownloading, setIsDownloading] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
@@ -43,23 +43,23 @@ export default function EReceiptScreen() {
 
   const { data: booking } = useBooking(bookingId);
 
-  const bookingNumber = booking?.bookingNumber || params.bookingNumber || `KB-${bookingId.replace('job_kb_', '')}`;
-  const transactionRef = params.paymentRef || `PAY-KBD-${bookingNumber.replace('KB-', '')}-99281`;
+  const bookingNumber = booking?.bookingNumber || params.bookingNumber || '';
+  const transactionRef = params.paymentRef || '';
   const paymentMethod =
-    params.method || (booking?.paymentMethod ? booking.paymentMethod.replace('_', ' ') : 'Credit Card');
+    params.method || (booking?.paymentMethod ? booking.paymentMethod.replace('_', ' ') : 'Bachs');
 
-  const serviceTitle = booking?.service?.name || params.serviceName || 'Home Deep Cleaning Service';
-  const servicePriceKobo = booking?.priceKobo || 2700000;
+  const serviceTitle = booking?.service?.name || params.serviceName || 'Service booking';
+  const servicePriceKobo = booking?.priceKobo || 0;
   const vatKobo = booking?.vatKobo || Math.round(servicePriceKobo * 0.075);
   const discountKobo = booking?.discountKobo || 0;
   const platformFeeKobo = 50000;
   const totalPaidKobo = params.amountKobo
     ? parseInt(params.amountKobo, 10)
-    : booking?.totalKobo || servicePriceKobo + vatKobo + platformFeeKobo - discountKobo;
+    : booking?.totalKobo || Math.max(0, servicePriceKobo + vatKobo + platformFeeKobo - discountKobo);
 
-  const formattedDate = booking?.scheduledAt ? formatDateWAT(booking.scheduledAt) : 'Dec 23, 2024';
-  const timeSlot = booking?.arrivalWindow?.slotLabel || '10:00 AM';
-  const paidAt = 'Dec 14, 2024 | 10:01 AM';
+  const formattedDate = booking?.scheduledAt ? formatDateWAT(booking.scheduledAt) : '';
+  const timeSlot = booking?.arrivalWindow?.slotLabel || '';
+  const paidAt = booking?.scheduledAt ? formatDateWAT(booking.scheduledAt) : '';
 
   const handleShare = async () => {
     try {
@@ -89,8 +89,8 @@ export default function EReceiptScreen() {
 
   const summaryRows: Array<[string, string]> = [
     ['Services', serviceTitle],
-    ['Category', 'Cleaning'],
-    ['Workers', booking?.provider?.name || 'KENDIBO Pro'],
+    ['Category', booking?.service?.categoryId || 'Service'],
+    ['Workers', booking?.provider?.name || 'KENDIBO Verified Pro'],
     ['Date & Time', `${formattedDate} | ${timeSlot}`],
     ['Working Hours', `${booking?.service?.durationMinutes ? Math.ceil(booking.service.durationMinutes / 60) : 2} hours`],
   ];
@@ -132,7 +132,7 @@ export default function EReceiptScreen() {
             {transactionRef}
           </Text>
           <Text style={[styles.qrSub, { color: colors.textSecondary, fontFamily: fonts.regular }]}>
-            Booking #{bookingNumber}{currentAddress ? ` • ${currentAddress.city || 'Uyo'}` : ''}
+            Booking #{bookingNumber}{currentAddress?.city ? ` • ${currentAddress.city}` : ''}
           </Text>
         </View>
 

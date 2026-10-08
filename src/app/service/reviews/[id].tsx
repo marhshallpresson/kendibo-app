@@ -22,45 +22,6 @@ interface MockReviewItem {
   tags: string[];
 }
 
-const INITIAL_REVIEWS: MockReviewItem[] = [
-  {
-    id: 'rev-1',
-    userName: 'Lauralee Quintero',
-    rating: 5,
-    date: '3 weeks ago',
-    comment: 'Awesome! This is what I was looking for, I recommend to everyone.',
-    likes: 724,
-    tags: ['On Time'],
-  },
-  {
-    id: 'rev-2',
-    userName: 'Clinton Mcclure',
-    rating: 4,
-    date: '1 weeks ago',
-    comment: 'The workers are very professional and the results are very satisfying! I like it very much.',
-    likes: 783,
-    tags: ['Professional'],
-  },
-  {
-    id: 'rev-3',
-    userName: 'Chidinma Adeleke',
-    rating: 5,
-    date: '2 days ago',
-    comment: 'Super impressive work! The crew arrived on time in Ewet Housing. Deep cleaned all kitchen oil spots and bathroom grout.',
-    likes: 14,
-    tags: ['Spotless', 'Polite'],
-  },
-  {
-    id: 'rev-4',
-    userName: 'Ngozi Eze',
-    rating: 4,
-    date: '2 weeks ago',
-    comment: 'Very thorough sofa shampooing. Took about 3 hours to dry. Will book again next month.',
-    likes: 5,
-    tags: ['Good Value'],
-  },
-];
-
 export default function ServiceReviewsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useAppTheme();
@@ -108,8 +69,8 @@ export default function ServiceReviewsScreen() {
     return reviewsList.filter((r) => r.rating === selectedRatingFilter);
   }, [reviewsList, selectedRatingFilter]);
 
-  const avgRating = service?.rating || 4.8;
-  const reviewCount = service?.reviewCount || 142;
+  const avgRating = service?.rating ?? 0;
+  const reviewCount = service?.reviewCount ?? reviewsList.length;
   const filterOptions: Array<{ label: string; value: number | 'all' }> = [
     { label: 'All', value: 'all' },
     { label: '5', value: 5 },

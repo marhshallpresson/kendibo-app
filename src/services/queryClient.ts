@@ -2,7 +2,8 @@ import { QueryClient, onlineManager, useQuery, useMutation, useQueryClient } fro
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import { apiFetch } from './api/client';
+import { apiFetch, ApiError } from './api/client';
+import { useAuthStore } from '../stores/authStore';
 import { JobStatus, Address, Booking, Category, Service, ServiceAddOn } from '../types';
 
 // Setup network status listener for React Query online manager
@@ -20,11 +21,17 @@ export const queryClient = new QueryClient({
     queries: {
       gcTime: 1000 * 60 * 60 * 24, // 24 hours
       staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 2,
+      retry: (failureCount, error) => {
+        // Never retry auth/permission failures — they need a token refresh
+        // (handled in apiFetch) or a re-login, not repeated requests.
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return false;
+        return failureCount < 2;
+      },
       networkMode: 'offlineFirst',
     },
     mutations: {
       networkMode: 'offlineFirst',
+      retry: false,
     },
   },
 });
@@ -405,8 +412,11 @@ export function useSearchServices(query: string) {
 }
 
 export function useBookings(statusFilter?: string) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hydrated = useAuthStore((s) => s.hydrated);
   return useQuery({
     queryKey: ['bookings', statusFilter],
+    enabled: hydrated && isAuthenticated,
     queryFn: async () => {
       const qs =
         statusFilter && statusFilter !== 'all'
@@ -424,14 +434,15 @@ export function useBookings(statusFilter?: string) {
 }
 
 export function useBooking(bookingId: string) {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hydrated = useAuthStore((s) => s.hydrated);
   return useQuery({
     queryKey: ['booking', bookingId],
+    enabled: Boolean(bookingId) && hydrated && isAuthenticated,
     queryFn: async () => {
       const data = await apiFetch<unknown>(`/v1/bookings/${encodeURIComponent(bookingId)}`);
-      if (!data) return null;
       return mapServerBooking(data);
     },
-    enabled: Boolean(bookingId),
   });
 }
 
@@ -765,14 +776,63 @@ export function useAddAddress() {
   });
 }
 
+export function useUpdateAddress() {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      addressId,
+      patch,
+    }: {
+      addressId: string;
+      patch: Partial<Omit<Address, 'id' | 'createdAt'>>;
+    }) => {
+      const body: Record<string, unknown> = {};
+      if (patch.houseNumber !== undefined) body.houseNumber = patch.houseNumber;
+      if (patch.street !== undefined) body.street = patch.street;
+      if (patch.estate !== undefined) body.area = patch.estate;
+      if (patch.city !== undefined) body.city = patch.city;
+      if (patch.state !== undefined) body.state = patch.state;
+      if (patch.landmark !== undefined) body.landmark = patch.landmark;
+      if (patch.gateInstructions !== undefined) body.gateInstructions = patch.gateInstructions;
+      if (patch.contactPhone !== undefined) body.contactPhone = patch.contactPhone;
+      if (patch.coordinates?.latitude !== undefined) body.latitude = patch.coordinates.latitude;
+      if (patch.coordinates?.longitude !== undefined) body.longitude = patch.coordinates.longitude;
+
+      const data = await apiFetch<unknown>(`/v1/addresses/${encodeURIComponent(addressId)}`, {
+        method: 'PATCH',
+        body,
+      });
+      return mapServerAddress(data);
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['addresses'] });
+    },
+  });
+}
+
+export function useSetDefaultAddress() {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (addressId: string) => {
+      const data = await apiFetch<unknown>(
+        `/v1/addresses/${encodeURIComponent(addressId)}/default`,
+        { method: 'POST' },
+      );
+      return mapServerAddress(data);
+    },
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ['addresses'] });
+    },
+  });
+}
+
 export function useDeleteAddress() {
   const client = useQueryClient();
 
   return useMutation({
     mutationFn: async (addressId: string) => {
-      // NOTE: backend main.ts currently exposes GET/POST /v1/addresses only
-      // (no DELETE route). Implemented per contract; backend returns 404
-      // until the route lands.
       await apiFetch<unknown>(`/v1/addresses/${encodeURIComponent(addressId)}`, {
         method: 'DELETE',
       });

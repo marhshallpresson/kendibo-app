@@ -35,6 +35,11 @@ async function readToken(key: string): Promise<string | null> {
   return storageGet(key);
 }
 
+/** True when a live access token is present — use to gate authenticated queries. */
+export async function hasSessionToken(): Promise<boolean> {
+  return !!(await readToken(ACCESS_KEY));
+}
+
 function newIdemKey(prefix = 'm'): string {
   return `${prefix}_${Date.now().toString(36)}${Math.floor(Math.random() * 1e9).toString(36)}`;
 }
@@ -88,7 +93,11 @@ async function doFetch<T>(
       throw new ApiError(message, res.status, code, retryable);
     }
     if (!res.ok) {
-      throw new ApiError(`Request failed (${res.status}).`, res.status);
+      const fallback =
+        res.status === 403
+          ? 'You do not have permission to do this. If your session expired, sign in again.'
+          : `Request failed (${res.status}).`;
+      throw new ApiError(fallback, res.status);
     }
     // Backend contract is {data} | {error}. Unwrap data; endpoints without
     // data (e.g. {ok:true} legacy) fall back to the raw payload.
@@ -120,6 +129,12 @@ export async function apiFetch<T>(path: string, opts: ApiFetchOptions = {}): Pro
   const timeoutMs = opts.timeoutMs ?? REQUEST_TIMEOUT_MS;
   const useAuth = opts.auth ?? true;
   const token = useAuth ? await readToken(ACCESS_KEY) : null;
+
+  // Gate authenticated calls on a live token — no token means the user is
+  // signed out; fail fast with a friendly error instead of a 401 round-trip.
+  if (useAuth && !token && !path.startsWith('/v1/auth/')) {
+    throw new ApiError('Your session has expired. Please sign in again.', 401);
+  }
 
   try {
     return await doFetch<T>(path, opts, token, timeoutMs);

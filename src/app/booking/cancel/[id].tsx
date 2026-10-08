@@ -207,7 +207,7 @@ export default function CancelBookingScreen() {
             </View>
             <View style={styles.methodDetails}>
               <Text style={[styles.methodName, { color: colors.textPrimary, fontFamily: fonts.bold }]}>Original Payment Card</Text>
-              <Text style={[styles.methodSub, { color: colors.textSecondary, fontFamily: fonts.regular }]}>Mastercard •••• 4242 (3–5 business days)</Text>
+              <Text style={[styles.methodSub, { color: colors.textSecondary, fontFamily: fonts.regular }]}>Original payment method (3–5 business days)</Text>
             </View>
             <View style={[styles.radioOuter, refundMethod === 'card' && { borderColor: colors.primary }]}>
               {refundMethod === 'card' && <View style={[styles.radioInner, { backgroundColor: colors.primary }]} />}

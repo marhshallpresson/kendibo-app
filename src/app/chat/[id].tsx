@@ -28,7 +28,8 @@ import { useBooking, useJobMessages, useSendJobMessage } from '../../services/qu
 import { Booking } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { lightColors as colors, spacing, typography, radii, shadows } from '../../constants/theme';
+import { spacing, typography, radii, shadows, ColorTokens } from '../../constants/theme';
+import { useAppTheme } from '../_layout';
 import { formatTimeWAT } from '../../utils/date';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -50,6 +51,8 @@ const QUICK_RESPONSES = [
 ];
 
 export default function ChatDetailScreen() {
+  const { colors } = useAppTheme();
+  const styles = makeStyles(colors);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -301,7 +304,7 @@ export default function ChatDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (colors: ColorTokens) => StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#F8F9FB',
