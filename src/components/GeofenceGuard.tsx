@@ -7,7 +7,7 @@ import { useAppTheme } from '@/app/_layout';
 import { fonts } from '@/constants/theme';
 
 type Status = 'checking' | 'ok' | 'unsupported' | 'error';
-type Coverage = { city: string; lat: number; lng: number; radiusKm: number; zones: { zone: string; lat: number; lng: number; radiusKm: number }[] };
+type Coverage = { cityId: string; city: string; lat: number; lng: number; radiusKm: number; zones: { zone: string; lat: number; lng: number; radiusKm: number }[] };
 
 /**
  * Location verification is NON-BLOCKING: the app always opens. Failures show

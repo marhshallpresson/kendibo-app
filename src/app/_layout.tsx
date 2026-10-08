@@ -37,8 +37,18 @@ export default function RootLayout() {
   });
   const { requestAll } = useStartupPermissions();
 
+  const { useAuthStore } = require('../stores/authStore');
+  const hydrated = useAuthStore((s: any) => s.hydrated);
+
+  // Restore the persisted session once per boot (in-flight coalesced in the
+  // store). Redirects wait on `hydrated` so a reload lands on the session —
+  // lock screen, tabs or login — instead of onboarding.
   useEffect(() => {
-    if (!fontsLoaded) return;
+    useAuthStore.getState().hydrate().catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!fontsLoaded || !hydrated) return;
     SplashScreen.hideAsync().catch(() => {});
     // WatchUp first: global crash handler + offline-durable telemetry queue.
     initWatchup();
@@ -50,13 +60,12 @@ export default function RootLayout() {
     // No backend upload yet — token is persisted locally (secure-store)
     // and logged. Expo Go / denied permission resolves null.
     registerForPushAsync().catch(() => {});
-  }, [fontsLoaded, requestAll]);
+  }, [fontsLoaded, requestAll, hydrated]);
 
   // Hook up inactivity timer
   const { useInactivity } = require('../hooks/useInactivity');
   useInactivity();
 
-  const { useAuthStore } = require('../stores/authStore');
   const isLocked = useAuthStore((s: any) => s.isLocked);
   const { PinLockScreen } = require('../components/PinLockScreen');
 

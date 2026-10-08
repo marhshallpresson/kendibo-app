@@ -62,7 +62,7 @@ function DottedSpinner({ color, size = 48 }: { color: string; size?: number }) {
 
 export default function SplashScreen() {
   const router = useRouter();
-  const { isAuthenticated, hasCompletedOnboarding } = useAuthStore();
+  const { isAuthenticated, hasCompletedOnboarding, hydrated, user } = useAuthStore();
   const { colors } = useAppTheme();
   const [pulseAnim] = useState(() => new Animated.Value(1));
   const [fadeAnim] = useState(() => new Animated.Value(0));
@@ -91,17 +91,19 @@ export default function SplashScreen() {
     ]).start();
 
     const timer = setTimeout(() => {
+      // Waits for hydrate(): route off the restored session, never on stale
+      // boot state (that was the "reload → onboarding" bug).
       if (isAuthenticated) {
-        router.replace('/(tabs)' as any);
+        router.replace((user?.role === 'provider' ? '/(provider)' : '/(tabs)') as any);
       } else if (hasCompletedOnboarding) {
         router.replace('/(auth)/login');
       } else {
         router.replace('/(auth)/onboarding');
       }
-    }, 2000);
+    }, hydrated ? 900 : 400);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, hasCompletedOnboarding, router, fadeAnim, pulseAnim]);
+  }, [isAuthenticated, hasCompletedOnboarding, hydrated, user, router, fadeAnim, pulseAnim]);
 
   const styles = React.useMemo(
     () =>

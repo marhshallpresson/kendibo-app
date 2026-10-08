@@ -15,6 +15,12 @@ export default function EntryRedirect() {
   }, []);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const user = useAuthStore((state) => state.user);
+  const hydrated = useAuthStore((state) => state.hydrated);
+
+  // Wait for the persisted session to be restored — otherwise a reload
+  // redirects to the splash/onboarding path before auth state exists.
+  if (!hydrated) return null;
+
 
   if (isAuthenticated) {
     if (user?.role === 'provider') {

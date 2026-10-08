@@ -1,7 +1,7 @@
 import { create } from 'zustand';
-import * as SecureStore from 'expo-secure-store';
 import { User } from '../types';
 import { apiFetch, ApiError, ACCESS_KEY, REFRESH_KEY } from '../services/api/client';
+import { storageGet, storageSet, storageRemove } from '../services/storage';
 
 export type OtpChannel = 'phone' | 'email';
 
@@ -13,6 +13,8 @@ export interface AuthState {
   isBiometricEnabled: boolean;
   hasCompletedOnboarding: boolean;
   isLocked: boolean;
+  /** True once the persisted session has been restored (or cleared) on boot. */
+  hydrated: boolean;
 
   // Actions (export names preserved)
   login: (user: User, token?: string) => void;
@@ -20,6 +22,8 @@ export interface AuthState {
   setPin: (pin: string) => void;
   lockApp: () => void;
   unlockApp: (pin: string) => boolean;
+  /** Biometric success path: clears the lock without a PIN match. */
+  unlock: () => void;
   enableBiometrics: (enabled?: boolean) => void;
   updateUser: (partial: Partial<User>) => void;
   /** Persist profile fields to the backend (Fill/Edit Profile). */
@@ -33,11 +37,16 @@ export interface AuthState {
   verifyOtp: (channel: OtpChannel, identity: string, code: string, name?: string, role?: string) => Promise<User>;
   /** Google SSO: POST /v1/auth/google {idToken} → persists session. Returns isNew flag. */
   loginWithGoogle: (idToken: string) => Promise<{ user: User; isNew: boolean }>;
-  /** Restore session on boot: loads tokens → GET /v1/me; 401 clears locally. */
+  /** Restore session on boot: loads tokens → GET /v1/me; 401 clears locally.
+   *  Always ends by setting `hydrated: true`, and starts the app LOCKED when
+   *  a device PIN exists. Safe to call more than once (runs once). */
   hydrate: () => Promise<void>;
 }
 
 const USER_KEY = 'kendibo_user';
+const ONBOARDING_KEY = 'kendibo_onboarding';
+const PIN_KEY = 'kendibo_pin';
+const BIOMETRICS_KEY = 'kendibo_biometrics';
 
 function mapServerUser(raw: any, fallbackIdentity: string, fallbackName?: string): User {
   const phone = String(raw?.phone ?? (fallbackIdentity.includes('@') ? '' : fallbackIdentity));
@@ -62,32 +71,20 @@ function mapServerUser(raw: any, fallbackIdentity: string, fallbackName?: string
 }
 
 async function persistSession(access: string, refresh: string, user: User): Promise<void> {
-  try {
-    await SecureStore.setItemAsync(ACCESS_KEY, access);
-  } catch {
-    /* SecureStore unavailable (e.g. web) — session stays in memory only. */
-  }
-  try {
-    await SecureStore.setItemAsync(REFRESH_KEY, refresh);
-  } catch {
-    /* non-fatal */
-  }
-  try {
-    await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
-  } catch {
-    /* non-fatal: user refetch via /me covers this */
-  }
+  await storageSet(ACCESS_KEY, access);
+  if (refresh) await storageSet(REFRESH_KEY, refresh);
+  await storageSet(USER_KEY, JSON.stringify(user));
 }
 
 async function clearPersistedSession(): Promise<void> {
-  for (const key of [ACCESS_KEY, REFRESH_KEY, USER_KEY]) {
-    try {
-      await SecureStore.deleteItemAsync(key);
-    } catch {
-      /* best-effort cleanup */
-    }
+  // Onboarding stays completed — only the session is torn down.
+  for (const key of [ACCESS_KEY, REFRESH_KEY, USER_KEY, PIN_KEY, BIOMETRICS_KEY]) {
+    await storageRemove(key);
   }
 }
+
+/** Coalesces concurrent boot calls so hydrate() runs exactly once. */
+let hydrateInFlight: Promise<void> | null = null;
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -97,6 +94,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isBiometricEnabled: false,
   hasCompletedOnboarding: false,
   isLocked: false,
+  hydrated: false,
 
   login: (user: User, token = '') => {
     set({
@@ -134,12 +132,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isAuthenticated: false,
       pin: null,
       isBiometricEnabled: false,
+      isLocked: false,
     });
   },
 
   setPin: (pin: string) => {
     // PIN stays device-local by design — never sent to the backend.
     const currentUser = get().user;
+    storageSet(PIN_KEY, pin);
     set({
       pin,
       user: currentUser ? { ...currentUser, hasPin: true } : null,
@@ -150,8 +150,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   unlockApp: (pinInput) => { if (get().pin && pinInput === get().pin) { set({ isLocked: false }); return true; } return false; },
 
+  unlock: () => { if (get().isAuthenticated) set({ isLocked: false }); },
+
   enableBiometrics: (enabled = true) => {
     const currentUser = get().user;
+    if (enabled) storageSet(BIOMETRICS_KEY, '1');
+    else storageRemove(BIOMETRICS_KEY);
     set({
       isBiometricEnabled: enabled,
       user: currentUser ? { ...currentUser, isBiometricEnabled: enabled } : null,
@@ -163,7 +167,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (currentUser) {
       const next = { ...currentUser, ...partial };
       set({ user: next });
-      SecureStore.setItemAsync(USER_KEY, JSON.stringify(next)).catch(() => {});
+      storageSet(USER_KEY, JSON.stringify(next));
     }
   },
 
@@ -173,7 +177,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (currentUser) {
       const next = { ...currentUser, ...partial };
       set({ user: next });
-      SecureStore.setItemAsync(USER_KEY, JSON.stringify(next)).catch(() => {});
+      storageSet(USER_KEY, JSON.stringify(next));
     }
     try {
       const saved = await apiFetch<User>('/v1/me', {
@@ -187,7 +191,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       const merged = { ...(get().user ?? {}), ...mapServerUser(saved, '', (saved as User)?.name) } as User;
       set({ user: merged });
-      SecureStore.setItemAsync(USER_KEY, JSON.stringify(merged)).catch(() => {});
+      storageSet(USER_KEY, JSON.stringify(merged));
       return merged;
     } catch (err) {
       if (err instanceof ApiError) throw new Error(err.message);
@@ -196,6 +200,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   setOnboardingCompleted: (completed: boolean) => {
+    if (completed) storageSet(ONBOARDING_KEY, '1');
     set({ hasCompletedOnboarding: completed });
   },
 
@@ -295,63 +300,159 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   hydrate: async () => {
-    let access: string | null = null;
-    let cachedUser: User | null = null;
-    try {
-      access = await SecureStore.getItemAsync(ACCESS_KEY);
-    } catch {
-      access = null;
-    }
-    if (!access) return;
-    try {
-      cachedUser = await (async () => {
-        try {
-          const raw = await SecureStore.getItemAsync(USER_KEY);
-          return raw ? (JSON.parse(raw) as User) : null;
-        } catch {
-          return null;
-        }
-      })();
-    } catch {
-      cachedUser = null;
-    }
-    try {
-      const me = await apiFetch<any>('/v1/me', { method: 'GET' });
-      const user = mapServerUser(me, cachedUser?.email || cachedUser?.phone || '', cachedUser?.name);
-      // Preserve friendly name cached at verify-time when server lacks it.
-      if (cachedUser?.name && (!me?.name || me.name === 'Kendibo User')) {
-        user.name = cachedUser.name;
-      }
-      if (cachedUser?.email && !me?.email) user.email = cachedUser.email;
-      if (cachedUser?.phone && !me?.phone) user.phone = cachedUser.phone;
-      try {
-        await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
-      } catch {
-        /* ignore */
-      }
-      set({
-        user,
-        token: access,
-        isAuthenticated: true,
-        hasCompletedOnboarding: true,
-      });
-      try {
-        const { watchup } = require('../services/watchup') as typeof import('../services/watchup');
-        watchup.setUser({ id: user.id, email: user.email, name: user.name });
-      } catch {
-        /* ignore */
-      }
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        await clearPersistedSession();
-        set({ user: null, token: null, isAuthenticated: false });
+    // Runs exactly once — a second call while booting waits on the first.
+    if (get().hydrated) return;
+    if (hydrateInFlight) return hydrateInFlight;
+    hydrateInFlight = (async () => {
+      // 1. Device-local flags first: prevents an onboarding flash and lets the
+      //    lock decision be made before the network answers.
+      const [access, onboardingFlag, pinValue, bioFlag] = await Promise.all([
+        storageGet(ACCESS_KEY),
+        storageGet(ONBOARDING_KEY),
+        storageGet(PIN_KEY),
+        storageGet(BIOMETRICS_KEY),
+      ]);
+      const cachedUser = await readCachedUser();
+
+      const baseFlags: BootFlags = {
+        hasCompletedOnboarding: onboardingFlag === '1',
+        pin: pinValue,
+        isBiometricEnabled: bioFlag === '1',
+      };
+
+      if (!access) {
+        set({ ...baseFlags, user: null, token: null, isAuthenticated: false, isLocked: false });
         return;
       }
-      // Offline / transient: keep last-known local session if we have one.
+
       if (cachedUser) {
-        set({ user: cachedUser, token: access, isAuthenticated: true });
+        // Instant restore: render behind the lock screen, verify below.
+        set({
+          ...baseFlags,
+          hasCompletedOnboarding: true,
+          user: cachedUser,
+          token: access,
+          isAuthenticated: true,
+          isLocked: Boolean(pinValue),
+        });
+        await validateSession(access, baseFlags, cachedUser);
+        return;
       }
-    }
+
+      // No cached profile (first boot on a new device): we have nothing
+      // meaningful to render until the backend answers, so wait for it.
+      try {
+        const user = await fetchMe(access, null);
+        set({
+          ...baseFlags,
+          hasCompletedOnboarding: true,
+          user,
+          token: access,
+          isAuthenticated: true,
+          isLocked: Boolean(pinValue),
+        });
+        watchupIdentify(user);
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 401) {
+          await clearPersistedSession();
+          set({
+            ...baseFlags,
+            pin: null,
+            isBiometricEnabled: false,
+            user: null,
+            token: null,
+            isAuthenticated: false,
+            isLocked: false,
+          });
+        } else {
+          // Offline with no cache → treat as signed out (login, not onboarding).
+          set({ ...baseFlags, user: null, token: null, isAuthenticated: false, isLocked: false });
+        }
+      }
+    })().finally(() => {
+      hydrateInFlight = null;
+      set({ hydrated: true });
+    });
+    return hydrateInFlight;
   },
 }));
+
+/** Device-local flags read during boot, replayed by the background validator. */
+type BootFlags = {
+  hasCompletedOnboarding: boolean;
+  pin: string | null;
+  isBiometricEnabled: boolean;
+};
+
+/**
+ * Validate the restored access token against /v1/me without blocking boot.
+ * `apiFetch` already auto-refreshes once on 401, so a 401 here means the
+ * refresh was rejected too: the session is genuinely over.
+ */
+async function validateSession(access: string, flags: BootFlags, cachedUser: User): Promise<void> {
+  try {
+    const user = await fetchMe(access, cachedUser);
+    await storageSet(USER_KEY, JSON.stringify(user));
+    useAuthStore.setState({
+      ...flags,
+      hasCompletedOnboarding: true,
+      user,
+      token: access,
+      isAuthenticated: true,
+      isLocked: Boolean(flags.pin),
+    });
+    watchupIdentify(user);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      await clearPersistedSession();
+      useAuthStore.setState({
+        ...flags,
+        pin: null,
+        isBiometricEnabled: false,
+        user: null,
+        token: null,
+        isAuthenticated: false,
+        isLocked: false,
+      });
+      return;
+    }
+    // Offline / transient: keep the last-known session (still locked).
+    useAuthStore.setState({
+      ...flags,
+      hasCompletedOnboarding: true,
+      user: cachedUser,
+      token: access,
+      isAuthenticated: true,
+      isLocked: Boolean(flags.pin),
+    });
+  }
+}
+
+async function fetchMe(access: string, cachedUser: User | null): Promise<User> {
+  const me = await apiFetch<any>('/v1/me', { method: 'GET', timeoutMs: 8000 });
+  const user = mapServerUser(me, cachedUser?.email || cachedUser?.phone || '', cachedUser?.name);
+  // Preserve the friendly name cached at verify-time when the server lacks one.
+  if (cachedUser?.name && (!me?.name || me.name === 'Kendibo User')) user.name = cachedUser.name;
+  if (cachedUser?.email && !me?.email) user.email = cachedUser.email;
+  if (cachedUser?.phone && !me?.phone) user.phone = cachedUser.phone;
+  return user;
+}
+
+function watchupIdentify(user: User): void {
+  try {
+    const { watchup } = require('../services/watchup') as typeof import('../services/watchup');
+    watchup.setUser({ id: user.id, email: user.email, name: user.name });
+  } catch {
+    /* telemetry must never break boot */
+  }
+}
+
+async function readCachedUser(): Promise<User | null> {
+  try {
+    const raw = await storageGet(USER_KEY);
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch {
+    return null;
+  }
+}
 

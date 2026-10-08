@@ -1,5 +1,5 @@
-import * as SecureStore from 'expo-secure-store';
 import { API_BASE_URL, REQUEST_TIMEOUT_MS } from '../../constants/config';
+import { storageGet, storageSet } from '../storage';
 
 /** SecureStore keys for the live session (Bearer access + rotation refresh). */
 export const ACCESS_KEY = 'kendibo_access';
@@ -32,12 +32,7 @@ export interface ApiFetchOptions {
 }
 
 async function readToken(key: string): Promise<string | null> {
-  try {
-    const v = await SecureStore.getItemAsync(key);
-    return v ?? null;
-  } catch {
-    return null;
-  }
+  return storageGet(key);
 }
 
 function newIdemKey(prefix = 'm'): string {
@@ -141,18 +136,10 @@ export async function apiFetch<T>(path: string, opts: ApiFetchOptions = {}): Pro
           timeoutMs,
         );
         if (rotated?.access) {
-          try {
-            await SecureStore.setItemAsync(ACCESS_KEY, rotated.access);
-          } catch {
-            /* memory-only fallback */
-          }
-          if (rotated.refresh) {
-            try {
-              await SecureStore.setItemAsync(REFRESH_KEY, rotated.refresh);
-            } catch {
-              /* ignore */
-            }
-          }
+
+          await storageSet(ACCESS_KEY, rotated.access);
+
+          if (rotated.refresh) await storageSet(REFRESH_KEY, rotated.refresh);
           return await doFetch<T>(path, opts, rotated.access, timeoutMs);
         }
       } catch (refreshErr) {

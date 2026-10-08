@@ -6,7 +6,7 @@ import { useAuthStore } from '../stores/authStore';
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000;
 
 export function useInactivity() {
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   useEffect(() => {
     // Only set up inactivity timer if user is authenticated and has a PIN
