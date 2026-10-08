@@ -13,8 +13,15 @@ export interface ApiErrorShape {
 function baseUrl(): string {
   // Single source of truth lives in constants/config (EXPO_PUBLIC_API_URL).
   // On Android emulators, host loopback is reachable via 10.0.2.2.
-  if (!__DEV__) return API_BASE_URL;
-  if (process.env.EXPO_PUBLIC_API_URL) return API_BASE_URL;
+  let url = API_BASE_URL;
+  if (!__DEV__) {
+    if (process.env.EXPO_PUBLIC_API_URL) url = process.env.EXPO_PUBLIC_API_URL;
+    // Strict Encrypted Rails: Production builds MUST use HTTPS.
+    if (!url.startsWith('https://')) {
+      url = url.replace(/^http:\/\//i, 'https://');
+    }
+    return url;
+  }
   const extra = Constants.expoConfig?.extra as { apiUrl?: string } | undefined;
   if (extra?.apiUrl) return extra.apiUrl;
   if (/localhost|127\.0\.0\.1/.test(API_BASE_URL)) {
