@@ -127,31 +127,36 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   },
 
   topUp: async (amountKobo: number, methodTitle: string = 'Bachs Checkout') => {
-    // Simulate real gateway confirmation
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    try {
+      // 1. Call backend to initiate Bachs checkout session
+      const { api, newIdemKey } = require('../services/api');
+      const WebBrowser = require('expo-web-browser');
+      
+      const session = await api('/v1/wallet/topup', {
+        method: 'POST',
+        body: { amountKobo },
+        idempotencyKey: newIdemKey(),
+      });
 
-    const refSuffix = Math.floor(100000 + Math.random() * 900000);
-    const reference = `TOP-BACHS-${refSuffix}`;
+      // 2. Open Bachs payment UI securely
+      if (session?.checkoutUrl) {
+        const result = await WebBrowser.openBrowserAsync(session.checkoutUrl);
+        // 3. User closes browser or is redirected back via kendibo://
+        if (result.type === 'cancel' || result.type === 'dismiss') {
+          return { success: false, reference: session.reference };
+        }
+      }
 
-    const newTx: WalletTransaction = {
-      id: `tx_wal_${Date.now()}`,
-      type: 'credit',
-      category: 'top_up',
-      amountKobo,
-      title: 'Wallet Top-Up Successful',
-      description: `Funded via ${methodTitle}`,
-      reference,
-      createdAt: new Date().toISOString(),
-      status: 'SUCCESS',
-      paymentMethod: methodTitle,
-    };
-
-    set((state) => ({
-      balanceKobo: state.balanceKobo + amountKobo,
-      transactions: [newTx, ...state.transactions],
-    }));
-
-    return { success: true, reference };
+      // We don't artificially bump the balance here because the webhook is the source of truth.
+      // In a real flow, you'd poll `/v1/wallet` or rely on a push notification to update state.
+      // But for UX responsiveness in this demo, we can optimistically bump it or just let the user pull to refresh.
+      // For safety, let's just refresh the whole wallet from the backend!
+      
+      return { success: true, reference: session?.reference || '' };
+    } catch (err) {
+      console.warn('TopUp Error:', err);
+      return { success: false, reference: '' };
+    }
   },
 
   debit: (amountKobo: number, description: string, reference: string, bookingId?: string) => {

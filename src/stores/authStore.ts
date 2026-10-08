@@ -12,11 +12,14 @@ export interface AuthState {
   pin: string | null;
   isBiometricEnabled: boolean;
   hasCompletedOnboarding: boolean;
+  isLocked: boolean;
 
   // Actions (export names preserved)
   login: (user: User, token?: string) => void;
   logout: () => Promise<void>;
   setPin: (pin: string) => void;
+  lockApp: () => void;
+  unlockApp: (pin: string) => boolean;
   enableBiometrics: (enabled?: boolean) => void;
   updateUser: (partial: Partial<User>) => void;
   /** Persist profile fields to the backend (Fill/Edit Profile). */
@@ -93,6 +96,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   pin: null,
   isBiometricEnabled: false,
   hasCompletedOnboarding: false,
+  isLocked: false,
 
   login: (user: User, token = '') => {
     set({
@@ -141,6 +145,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       user: currentUser ? { ...currentUser, hasPin: true } : null,
     });
   },
+
+  lockApp: () => { if (get().isAuthenticated && get().pin) set({ isLocked: true }); },
+
+  unlockApp: (pinInput) => { if (get().pin && pinInput === get().pin) { set({ isLocked: false }); return true; } return false; },
 
   enableBiometrics: (enabled = true) => {
     const currentUser = get().user;

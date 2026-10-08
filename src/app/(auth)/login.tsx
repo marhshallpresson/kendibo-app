@@ -52,7 +52,7 @@ export default function LoginScreen() {
     GOOGLE_WEB_CLIENT_ID || GOOGLE_IOS_CLIENT_ID || GOOGLE_ANDROID_CLIENT_ID,
   );
   const [, , googlePromptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID || undefined,
+    webClientId: GOOGLE_WEB_CLIENT_ID || 'dummy-client-id-for-web',
     iosClientId: GOOGLE_IOS_CLIENT_ID || undefined,
     androidClientId: GOOGLE_ANDROID_CLIENT_ID || undefined,
   });
