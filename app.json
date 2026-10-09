@@ -54,7 +54,8 @@
       ],
       "expo-secure-store",
       "expo-video",
-      "expo-web-browser"
+      "expo-web-browser",
+      "@rnmapbox/maps"
     ],
     "ios": {
       "supportsTablet": true
