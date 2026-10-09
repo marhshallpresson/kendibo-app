@@ -221,7 +221,6 @@ export default function TrackingDetailScreen() {
               <View style={styles.providerMeta}>
                 <View style={styles.providerNameRow}>
                   <Text style={styles.providerName}>{booking.provider.name}</Text>
-                  <Badge label="Verified Pro" variant="success" size="sm" />
                 </View>
                 <View style={styles.providerRatingRow}>
                   <Star size={13} color="#FF9800" fill="#FF9800" />

@@ -129,10 +129,10 @@ export default function BookingsScreen() {
           </Pressable>
           <View style={styles.cardTopMid}>
             <Text style={[styles.serviceTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-              {booking.service?.name || 'Home Maintenance Service'}
+              {booking.service?.name || 'Service'}
             </Text>
             <Text style={[styles.providerName, { color: colors.textSecondary }]} numberOfLines={1}>
-              {booking.provider?.name || 'Verified Pro'}
+              {booking.provider?.name || 'Provider'}
             </Text>
             <View style={styles.badgeRow}>
               <Badge label={badgeConfig.label} variant={badgeConfig.variant} size="sm" />

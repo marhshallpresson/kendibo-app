@@ -260,13 +260,13 @@ export default function CalendarScreen() {
                           style={[styles.bookingTitle, { color: colors.textPrimary }]}
                           numberOfLines={1}
                         >
-                          {booking.service?.name || 'Home Deep Cleaning'}
+                          {booking.service?.name || 'Service'}
                         </Text>
                         <Text
                           style={[styles.bookingProvider, { color: colors.textSecondary }]}
                           numberOfLines={1}
                         >
-                          {booking.provider?.name || 'Verified Pro'}
+                          {booking.provider?.name || 'Provider'}
                         </Text>
                         <View style={{ alignSelf: 'flex-start', marginTop: 4 }}>
                           <Badge label={badge.label} variant={badge.variant} size="sm" />

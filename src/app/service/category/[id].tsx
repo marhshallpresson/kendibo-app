@@ -190,7 +190,7 @@ export default function CategoryScreen() {
                       {service.name}
                     </Text>
                     <Text style={[styles.price, { color: colors.primary, fontFamily: fonts.extraBold }]}>
-                      {service.isQuoteBased ? 'Inspection ₦3,000' : formatKoboToNaira(service.priceKobo)}
+                      {service.isQuoteBased ? 'Quote on inspection' : formatKoboToNaira(service.priceKobo)}
                     </Text>
                     <View style={styles.ratingRow}>
                       <Star size={13} color={STAR_AMBER} fill={STAR_AMBER} />

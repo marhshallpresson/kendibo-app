@@ -94,7 +94,7 @@ export default function VoiceCallScreen() {
 
         <Text style={styles.callerName}>{provider?.name || 'Assigned Technician'}</Text>
         <Text style={styles.callerRole}>
-          {booking?.service?.name || 'Home Maintenance'} • #{booking?.bookingNumber}
+          {booking?.service?.name || 'Service'} • #{booking?.bookingNumber}
         </Text>
 
         <View style={styles.statusPill}>

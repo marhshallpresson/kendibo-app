@@ -179,10 +179,12 @@ export default function ServiceDetailScreen() {
             </Text>
           </View>
           <Text style={[styles.price, { color: colors.primary, fontFamily: fonts.extraBold }]}>
-            {service.isQuoteBased ? '₦3,000 ' : formatKoboToNaira(service.priceKobo)}{' '}
-            <Text style={[styles.priceNote, { color: colors.textMuted, fontFamily: fonts.regular }]}>
-              (Floor price)
-            </Text>
+            {service.isQuoteBased ? 'Quote on inspection' : formatKoboToNaira(service.priceKobo)}
+            {!service.isQuoteBased && (
+              <Text style={[styles.priceNote, { color: colors.textMuted, fontFamily: fonts.regular }]}>
+                {' '}(Floor price)
+              </Text>
+            )}
           </Text>
         </View>
 
@@ -346,7 +348,7 @@ export default function ServiceDetailScreen() {
               {service.isQuoteBased ? 'Request Quote' : 'Book Now'}
             </Text>
             <Text style={[styles.bookNowSub, { fontFamily: fonts.semiBold }]}>
-              {service.isQuoteBased ? '₦3,000 Callout' : formatKoboToNaira(totalPriceKobo)}
+              {service.isQuoteBased ? 'Quote after inspection' : formatKoboToNaira(totalPriceKobo)}
             </Text>
           </View>
         </Pressable>

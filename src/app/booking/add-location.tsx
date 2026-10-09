@@ -31,7 +31,6 @@ export default function AddLocationScreen() {
   useEffect(() => {
     if (region.latitude !== 0 || region.longitude !== 0) return;
     let mounted = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- async GPS init on mount
     (async () => {
       try {
         const { status: permissionStatus } = await Location.getForegroundPermissionsAsync();

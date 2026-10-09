@@ -219,7 +219,8 @@ export default function SearchScreen() {
                 {filteredServices.map((service: Service) => {
                   const providerName =
                     categories.find((c) => c.id === service.categoryId)?.name ||
-                    'Verified Pro';
+                    service.providerName ||
+                    '';
                   const isBookmarked = bookmarkedIds.includes(service.id);
                   return (
                     <Pressable
@@ -229,12 +230,14 @@ export default function SearchScreen() {
                     >
                       <Image source={resolveImage(service.imageUrl)} style={styles.resultImage} />
                       <View style={styles.resultDetails}>
-                        <Text
-                          style={[styles.resultProvider, { color: colors.textSecondary }]}
-                          numberOfLines={1}
-                        >
-                          {providerName}
-                        </Text>
+                        {!!providerName && (
+                          <Text
+                            style={[styles.resultProvider, { color: colors.textSecondary }]}
+                            numberOfLines={1}
+                          >
+                            {providerName}
+                          </Text>
+                        )}
                         <Text
                           style={[styles.resultTitle, { color: colors.textPrimary }]}
                           numberOfLines={1}

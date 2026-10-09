@@ -90,7 +90,7 @@ export default function EReceiptScreen() {
   const summaryRows: Array<[string, string]> = [
     ['Services', serviceTitle],
     ['Category', booking?.service?.categoryId || 'Service'],
-    ['Workers', booking?.provider?.name || 'KENDIBO Verified Pro'],
+    ['Workers', booking?.provider?.name || 'Provider'],
     ['Date & Time', `${formattedDate} | ${timeSlot}`],
     ['Working Hours', `${booking?.service?.durationMinutes ? Math.ceil(booking.service.durationMinutes / 60) : 2} hours`],
   ];
