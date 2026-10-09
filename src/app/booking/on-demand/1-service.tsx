@@ -5,8 +5,8 @@ import { useOnDemandStore } from '../../../stores/onDemandStore';
 import { theme } from '../../../constants/theme';
 import { Button } from '../../../components/ui/Button';
 import { useCategories } from '../../../services/queryClient';
-import { pickEvidence, uriToBase64 } from '../../../utils/images';
-import { apiFetch } from '../../../services/api/client';
+import { pickEvidence } from '../../../utils/images';
+import { uploadMedia } from '../../../services/media';
 import { Camera, X } from 'lucide-react-native';
 
 export default function CategoryScreen() {
@@ -31,14 +31,13 @@ export default function CategoryScreen() {
     if (!pick) return;
     setUploading(true);
     try {
-      const base64 = await uriToBase64(pick.uri);
-      const done = await apiFetch<{ url?: string }>('/v1/media/ingest', {
-        method: 'POST',
-        body: { dataBase64: base64, mime: pick.mime },
-      });
-      setPhotoUrls((prev) => [...prev, done?.url ?? pick.uri]);
-    } catch {
-      setPhotoUrls((prev) => [...prev, pick.uri]);
+      const done = await uploadMedia(pick.uri, 'photo', pick.mime);
+      setPhotoUrls((prev) => [...prev, done.url]);
+    } catch (e) {
+      Alert.alert(
+        'Photo upload failed',
+        e instanceof Error && e.message ? e.message : 'Check your connection and try again.',
+      );
     } finally {
       setUploading(false);
     }

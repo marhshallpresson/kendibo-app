@@ -1,4 +1,4 @@
-import { API_BASE_URL, REQUEST_TIMEOUT_MS } from '../../constants/config';
+import { API_BASE_URL, API_HOST, REQUEST_TIMEOUT_MS } from '../../constants/config';
 import { storageGet, storageSet } from '../storage';
 
 /** SecureStore keys for the live session (Bearer access + rotation refresh). */
@@ -44,9 +44,27 @@ function newIdemKey(prefix = 'm'): string {
   return `${prefix}_${Date.now().toString(36)}${Math.floor(Math.random() * 1e9).toString(36)}`;
 }
 
+/**
+ * Network-level failure (DNS/refused/timeout/abort). The message names the
+ * KENDIBO host so a login failure is never confused with a third-party
+ * telemetry host being down (WatchUp runs on api.watchup.site and its
+ * failures are swallowed inside `src/services/watchup.ts`).
+ */
+function unreachableError(): TypeError {
+  return new TypeError(
+    `Can't reach the KENDIBO API (${API_HOST}). Check your internet connection and try again.`,
+  );
+}
+
 interface Envelope {
   data?: unknown;
+  /** Fastify's default error body carries the reason here (not under `error`). */
+  message?: string;
   error?: { code?: string; message?: string; retryable?: boolean } | string;
+}
+
+function clip(s: string): string {
+  return s.length > 240 ? `${s.slice(0, 240)}…` : s;
 }
 
 async function doFetch<T>(
@@ -74,9 +92,8 @@ async function doFetch<T>(
         headers,
         body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
       });
-    } catch (err) {
-      if (err instanceof TypeError) throw new TypeError('API unreachable');
-      throw new TypeError('API unreachable');
+    } catch {
+      throw unreachableError();
     }
     let json: Envelope = {};
     try {
@@ -87,7 +104,9 @@ async function doFetch<T>(
     if (json && typeof json.error !== 'undefined' && json.error !== null) {
       const e = json.error;
       const message =
-        typeof e === 'string' ? e : e.message || e.code || `Request failed (${res.status}).`;
+        typeof e === 'string'
+          ? clip(json.message || e)
+          : e.message || e.code || `Request failed (${res.status}).`;
       const code = typeof e === 'string' ? undefined : e.code;
       const retryable = typeof e === 'string' ? undefined : e.retryable;
       throw new ApiError(message, res.status, code, retryable);
@@ -108,9 +127,11 @@ async function doFetch<T>(
   } catch (err) {
     if (err instanceof ApiError || err instanceof TypeError) throw err;
     if (err instanceof DOMException && err.name === 'AbortError') {
-      throw new TypeError('API unreachable');
+      throw new TypeError(
+        `Can't reach the KENDIBO API (${API_HOST}): the request timed out. Try again.`,
+      );
     }
-    throw new TypeError('API unreachable');
+    throw unreachableError();
   } finally {
     clearTimeout(timer);
   }
@@ -121,7 +142,7 @@ async function doFetch<T>(
  *
  * - Base URL + timeout from `src/constants/config.ts`
  * - JSON in/out; `{error}` envelope or non-2xx → `ApiError{message,status}`
- * - Network failure / timeout → `TypeError('API unreachable')`
+ * - Network failure / timeout → `TypeError("Can't reach the KENDIBO API (<host>)…")`
  * - Bearer access token from SecureStore `kendibo_access` (unless `auth:false`)
  * - Auto-refresh once on 401 via `kendibo_refresh` → POST /v1/auth/refresh, then retry
  */

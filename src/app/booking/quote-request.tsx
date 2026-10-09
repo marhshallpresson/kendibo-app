@@ -10,7 +10,8 @@ import { radii, spacing, fonts, shadows } from '../../constants/theme';
 import { useLocationStore } from '../../stores/locationStore';
 import { useCategories } from '../../services/queryClient';
 import { apiFetch, ApiError } from '../../services/api/client';
-import { pickEvidence, uriToBase64 } from '../../utils/images';
+import { uploadMedia } from '../../services/media';
+import { pickEvidence } from '../../utils/images';
 import { useAuthStore } from '../../stores/authStore';
 
 const URGENCIES = [
@@ -81,14 +82,13 @@ export default function QuoteRequestScreen() {
     if (!pick) return;
     setUploading(true);
     try {
-      const base64 = await uriToBase64(pick.uri);
-      const done = await apiFetch<{ url?: string }>('/v1/media/ingest', {
-        method: 'POST',
-        body: { dataBase64: base64, mime: pick.mime },
-      });
-      setPhotos((prev) => [...prev, { uri: pick.uri, url: done?.url ?? pick.uri }]);
-    } catch {
-      setPhotos((prev) => [...prev, { uri: pick.uri, url: pick.uri }]);
+      const done = await uploadMedia(pick.uri, 'photo', pick.mime);
+      setPhotos((prev) => [...prev, { uri: pick.uri, url: done.url }]);
+    } catch (e) {
+      Alert.alert(
+        'Photo upload failed',
+        e instanceof Error && e.message ? e.message : 'Check your connection and try again.',
+      );
     } finally {
       setUploading(false);
     }

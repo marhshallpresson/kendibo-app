@@ -14,11 +14,14 @@ import Constants from 'expo-constants';
 
 const BASE_URL = 'https://api.watchup.site';
 const INGEST_PATH = '/api/v1/ingest/batch';
+/** Telemetry/flags calls are best-effort: short timeout, never reject. */
+const TELEMETRY_TIMEOUT_MS = 5000;
 const QUEUE_KEY = 'KENDIBO_WATCHUP_QUEUE';
 const FLAGS_KEY = 'KENDIBO_WATCHUP_FLAGS';
 const MAX_BATCH = 100;
 const MAX_QUEUE = 1000;
 const REDACTED = '[REDACTED]';
+
 
 const SENSITIVE = new Set([
   'password', 'passwd', 'secret', 'api_key', 'apikey', 'access_token',
@@ -70,9 +73,23 @@ function bucket(key: string, id: string): number {
   return (h >>> 0) % 100;
 }
 
-function newId(): string {
-  return `${Date.now().toString(36)}${Math.floor(Math.random() * 1e9).toString(36)}`;
+/**
+ * Fire-and-forget fetch for telemetry. Resolves to `null` on ANY failure
+ * (offline, DNS reset, timeout, non-2xx) so a WatchUp host outage can never
+ * reject into app code — login/booking must not see telemetry errors.
+ */
+async function quietFetch(url: string, init?: RequestInit): Promise<Response | null> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TELEMETRY_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
+
 
 interface FlagRule {
   key: string;
@@ -148,21 +165,25 @@ class WatchupRN {
     try {
       if (!this.enabled) return;
       const e = err as { message?: string; name?: string; stack?: string };
-      void this.load().then(() =>
-        this.push({
-          kind: 'error',
-          message: truncate(String(e?.message ?? err), 8192),
-          level: 'error',
-          timestamp: new Date().toISOString(),
-          type: e?.name,
-          stack: e?.stack ? truncate(e.stack, 32768) : undefined,
-          context: ctx ? (sanitize(ctx) as Record<string, unknown>) : undefined,
-          environment: this.environment,
-          release: this.release,
-          service: 'kendibo-app',
-          user: this.user ?? undefined,
-        }),
-      );
+      this.load()
+        .then(() =>
+          this.push({
+            kind: 'error',
+            message: truncate(String(e?.message ?? err), 8192),
+            level: 'error',
+            timestamp: new Date().toISOString(),
+            type: e?.name,
+            stack: e?.stack ? truncate(e.stack, 32768) : undefined,
+            context: ctx ? (sanitize(ctx) as Record<string, unknown>) : undefined,
+            environment: this.environment,
+            release: this.release,
+            service: 'kendibo-app',
+            user: this.user ?? undefined,
+          }),
+        )
+        .catch(() => {
+          /* fail open — telemetry never rejects into callers */
+        });
     } catch {
       /* fail open */
     }
@@ -172,19 +193,23 @@ class WatchupRN {
   track(name: string, properties?: Record<string, unknown>): void {
     try {
       if (!this.enabled) return;
-      void this.load().then(() =>
-        this.push({
-          kind: 'event',
-          name,
-          occurred_at: new Date().toISOString(),
-          properties: {
-            ...((sanitize(properties) as Record<string, unknown>) ?? {}),
-            environment: this.environment,
-            release: this.release,
-            service: 'kendibo-app',
-          },
-        }),
-      );
+      this.load()
+        .then(() =>
+          this.push({
+            kind: 'event',
+            name,
+            occurred_at: new Date().toISOString(),
+            properties: {
+              ...((sanitize(properties) as Record<string, unknown>) ?? {}),
+              environment: this.environment,
+              release: this.release,
+              service: 'kendibo-app',
+            },
+          }),
+        )
+        .catch(() => {
+          /* fail open */
+        });
     } catch {
       /* fail open */
     }
@@ -194,20 +219,24 @@ class WatchupRN {
   traceScreen(route: string, ms: number, status: 'ok' | 'err' = 'ok'): void {
     try {
       if (!this.enabled || Math.random() > this.sampleRate) return;
-      void this.load().then(() =>
-        this.push({
-          kind: 'trace',
-          span: `screen ${route}`,
-          ms: Math.round(ms * 100) / 100,
-          status_code: status === 'ok' ? 200 : 500,
-          status,
-          timestamp: new Date().toISOString(),
-          environment: this.environment,
-          release: this.release,
-          service: 'kendibo-app',
-          meta: { route },
-        }),
-      );
+      this.load()
+        .then(() =>
+          this.push({
+            kind: 'trace',
+            span: `screen ${route}`,
+            ms: Math.round(ms * 100) / 100,
+            status_code: status === 'ok' ? 200 : 500,
+            status,
+            timestamp: new Date().toISOString(),
+            environment: this.environment,
+            release: this.release,
+            service: 'kendibo-app',
+            meta: { route },
+          }),
+        )
+        .catch(() => {
+          /* fail open */
+        });
     } catch {
       /* fail open */
     }
@@ -225,16 +254,23 @@ class WatchupRN {
     }
   }
 
+  /**
+   * Flags refresh — fail-open by contract. `quietFetch` swallows outages
+   * (the api.watchup.site host resetting connections is normal), so this
+   * NEVER rejects: a WatchUp outage can't surface as "API not reachable"
+   * during login or block any screen.
+   */
   async refreshFlags(): Promise<void> {
     try {
       if (!this.enabled) return;
       const net = await NetInfo.fetch();
       if (!net.isConnected) return;
-      const res = await fetch(`${BASE_URL}/api/v1/flags`, {
+      const res = await quietFetch(`${BASE_URL}/api/v1/flags`, {
         headers: { Authorization: `Bearer ${this.apiKey}`, 'X-Api-Key': this.apiKey },
       });
-      if (!res.ok) return;
-      const json = (await res.json()) as { flags?: FlagRule[] };
+      if (!res || !res.ok) return;
+      const json = (await res.json().catch(() => null)) as { flags?: FlagRule[] } | null;
+      if (!json) return;
       for (const f of json.flags ?? []) this.flags.set(f.key, f);
       try {
         await AsyncStorage.setItem(FLAGS_KEY, JSON.stringify([...this.flags.values()]));
@@ -270,27 +306,16 @@ class WatchupRN {
           errors,
           traces,
         });
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 8000);
-        let ok = false;
-        try {
-          const res = await fetch(`${BASE_URL}${INGEST_PATH}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${this.apiKey}`,
-              'X-Api-Key': this.apiKey,
-            },
-            body,
-            signal: ctrl.signal,
-          });
-          ok = res.ok;
-        } catch {
-          ok = false;
-        } finally {
-          clearTimeout(timer);
-        }
-        if (!ok) {
+        const res = await quietFetch(`${BASE_URL}${INGEST_PATH}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.apiKey}`,
+            'X-Api-Key': this.apiKey,
+          },
+          body,
+        });
+        if (!res?.ok) {
           this.queue.unshift(...batch.slice(-50));
           break;
         }
@@ -312,31 +337,35 @@ export const watchup = new WatchupRN();
 
 /** Call once at app boot (before rendering providers that may throw). */
 export function initWatchup(): void {
-  watchup.configure();
-  const ErrorUtils = (globalThis as unknown as { ErrorUtils?: { setGlobalHandler: (fn: (e: unknown) => void) => void } }).ErrorUtils;
   try {
-    ErrorUtils?.setGlobalHandler((err) => {
-      watchup.captureException(err, { source: 'globalHandler' });
-    });
+    watchup.configure();
+    const ErrorUtils = (globalThis as unknown as { ErrorUtils?: { setGlobalHandler: (fn: (e: unknown) => void) => void } }).ErrorUtils;
+    try {
+      ErrorUtils?.setGlobalHandler((err) => {
+        watchup.captureException(err, { source: 'globalHandler' });
+      });
+    } catch {
+      /* non-RN runtimes (web) */
+    }
+    try {
+      NetInfo.addEventListener((state) => {
+        if (state.isConnected) watchup.flush().catch(() => {});
+      });
+    } catch {
+      /* ignore */
+    }
+    const timer = setInterval(() => {
+      watchup.flush().catch(() => {});
+      watchup.refreshFlags().catch(() => {});
+    }, 30000);
+    const t = timer as unknown as { unref?: () => void };
+    try {
+      t.unref?.();
+    } catch {
+      /* browsers have no unref */
+    }
   } catch {
-    /* non-RN runtimes (web) */
-  }
-  try {
-    NetInfo.addEventListener((state) => {
-      if (state.isConnected) void watchup.flush();
-    });
-  } catch {
-    /* ignore */
-  }
-  const timer = setInterval(() => {
-    void watchup.flush();
-    void watchup.refreshFlags();
-  }, 30000);
-  const t = timer as unknown as { unref?: () => void };
-  try {
-    t.unref?.();
-  } catch {
-    /* browsers have no unref */
+    /* fail open — telemetry setup must never block app boot or login */
   }
 }
 

@@ -16,8 +16,8 @@ import { Input } from '../../components/ui/Input';
 import { useAuthStore } from '../../stores';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
-import { pickEvidence, uriToBase64 } from '../../utils/images';
-import { apiFetch } from '../../services/api/client';
+import { pickEvidence } from '../../utils/images';
+import { uploadMedia } from '../../services/media';
 
 /**
  * Edit Profile — mirrors the reference design: avatar with edit badge,
@@ -44,20 +44,12 @@ export default function EditProfileScreen() {
     if (!pick) return;
     setUploading(true);
     try {
-      const base64 = await uriToBase64(pick.uri);
-      const done = await apiFetch<{ url?: string }>('/v1/media/ingest', {
-        method: 'POST',
-        body: { dataBase64: base64, mime: pick.mime },
-      });
-      if (done?.url) {
-        setAvatarUrl(done.url);
-      } else {
-        setError('Photo upload failed. Please try again.');
-      }
-    } catch {
+      const done = await uploadMedia(pick.uri, 'avatar', pick.mime);
+      setAvatarUrl(done.url);
+    } catch (e) {
       // Never fall back to the local picker URI (blob:/file://) — it is
       // not resolvable after restart and breaks avatar rendering.
-      setError('Photo upload failed. Please check your connection and try again.');
+      setError(e instanceof Error && e.message ? e.message : 'Photo upload failed. Please try again.');
     } finally {
       setUploading(false);
     }

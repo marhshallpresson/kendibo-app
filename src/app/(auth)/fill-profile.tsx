@@ -17,8 +17,9 @@ import { Input } from '../../components/ui/Input';
 import { useAuthStore } from '../../stores';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
-import { pickEvidence, uriToBase64 } from '../../utils/images';
-import { apiFetch } from '../../services/api/client';
+import { pickEvidence } from '../../utils/images';
+import { uploadMedia } from '../../services/media';
+
 
 /**
  * Fill Your Profile (onboarding) — mirrors the reference design:
@@ -47,22 +48,15 @@ export default function FillProfileScreen() {
     if (!pick) return;
     setUploading(true);
     try {
-      const presign = await apiFetch<{ uploadUrl: string; assetId: string }>('/v1/media/presign', {
-        method: 'POST', body: { kind: 'photo' },
-      });
-      const base64 = await uriToBase64(pick.uri);
-      const done = await apiFetch<{ url?: string }>('/v1/media/ingest', {
-        method: 'POST', body: { dataBase64: base64, mime: pick.mime },
-      });
-      void presign;
-      if (done?.url) setAvatarUrl(done.url);
-      else setAvatarUrl(pick.uri);
+      const done = await uploadMedia(pick.uri, 'avatar', pick.mime);
+      setAvatarUrl(done.url);
     } catch {
       setAvatarUrl(pick.uri);
     } finally {
       setUploading(false);
     }
   };
+
 
   const handleContinue = async () => {
     setError('');

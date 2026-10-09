@@ -84,12 +84,13 @@ export const fileManager = {
           method: 'POST',
           body: { kind: 'photo', ...(item.additionalData ?? {}) },
         });
-        if (presign?.assetId) {
-          await apiFetch(`/v1/media/${presign.assetId}/ingest`, {
-            method: 'POST',
-            body: { dataBase64: base64, mime: item.mimeType },
-          });
-        }
+        // No assetId means nothing was stored — keep it queued instead of
+        // counting a silent success (the file would never reach the backend).
+        if (!presign?.assetId) throw new Error('PRESIGN_FAILED');
+        await apiFetch(`/v1/media/${presign.assetId}/ingest`, {
+          method: 'POST',
+          body: { dataBase64: base64, mime: item.mimeType },
+        });
         uploaded += 1;
       } catch {
         item.attempts += 1;
