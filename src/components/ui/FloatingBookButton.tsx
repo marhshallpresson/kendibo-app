@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { useAppTheme } from '../../constants/ThemeContext';
 import { fonts, radii, shadows, spacing } from '../../constants/theme';
 
-const appIcon = require('../../../assets/icon.png');
+const appIcon = require('../../../assets/logo-dark.png');
 
 export function FloatingBookButton() {
   const { colors } = useAppTheme();

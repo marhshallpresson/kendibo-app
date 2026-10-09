@@ -20,16 +20,10 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useAppTheme } from '../_layout';
-import { radii, spacing, fonts, shadows } from '../../constants/theme';
+import { spacing, fonts, shadows } from '../../constants/theme';
 import { useCartStore } from '../../stores/cartStore';
 import { useLocationStore } from '../../stores/locationStore';
 import { formatKoboToNaira, calculateVatKobo } from '../../utils/currency';
-
-const VALID_PROMOS: Record<string, { desc: string; calculate: (subtotal: number) => number }> = {
-  KENDIBO30: { desc: '30% off up to ₦5,000', calculate: (subtotal) => Math.min(500000, Math.round(subtotal * 0.3)) },
-  FIRSTCLEAN: { desc: '₦2,000 off first booking', calculate: () => 200000 },
-  WEEKENDFIX: { desc: '10% off repair services', calculate: (subtotal) => Math.round(subtotal * 0.1) },
-};
 
 export default function BookingCartScreen() {
   useWatchupScreen('BookingCart');
@@ -43,7 +37,7 @@ export default function BookingCartScreen() {
   }>();
   const { colors } = useAppTheme();
 
-  const { items, addItem, removeItem, promoCode, discount, applyPromo, removePromo } = useCartStore();
+  const { items, addItem, removeItem, promoCode, discount, removePromo } = useCartStore();
   const { currentAddress } = useLocationStore();
 
   const [promoInput, setPromoInput] = useState<string>('');
@@ -59,15 +53,9 @@ export default function BookingCartScreen() {
       setPromoError('Please enter a coupon code.');
       return;
     }
-    const promo = VALID_PROMOS[code];
-    if (promo) {
-      const currentSubtotal = items.reduce((acc, i) => acc + i.subtotalKobo, 0);
-      const discountKobo = promo.calculate(currentSubtotal);
-      applyPromo(code, discountKobo);
-      setPromoInput('');
-    } else {
-      setPromoError('Invalid promo code. Try KENDIBO30 or FIRSTCLEAN');
-    }
+    // Promo codes are validated and priced server-side only. No promo contract
+    // is wired yet, so this never fabricates a discount locally.
+    setPromoError('Promo codes cannot be verified right now.');
   };
 
   const handleRemovePromo = () => {
@@ -290,22 +278,6 @@ export default function BookingCartScreen() {
             </Pressable>
           </View>
         )}
-        <View style={styles.chipRow}>
-          {Object.entries(VALID_PROMOS).map(([code, p]) => (
-            <Pressable
-              key={code}
-              onPress={() => {
-                setPromoInput(code);
-                const currentSubtotal = items.reduce((acc, i) => acc + i.subtotalKobo, 0);
-                applyPromo(code, p.calculate(currentSubtotal));
-              }}
-              style={[styles.promoChip, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}
-            >
-              <Text style={[styles.promoChipCode, { color: colors.primary, fontFamily: fonts.bold }]}>{code}</Text>
-              <Text style={[styles.promoChipDesc, { color: colors.textMuted, fontFamily: fonts.regular }]}>{p.desc}</Text>
-            </Pressable>
-          ))}
-        </View>
 
         {/* Summary.png: Payment Summary */}
         <View style={[styles.paymentCard, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
@@ -417,10 +389,6 @@ const styles = StyleSheet.create({
   activePromoCode: { fontSize: 14 },
   activePromoSavings: { fontSize: 12 },
   removePromoText: { fontSize: 12 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm },
-  promoChip: { paddingVertical: 6, paddingHorizontal: spacing.sm, borderRadius: 12, borderWidth: 1 },
-  promoChipCode: { fontSize: 11 },
-  promoChipDesc: { fontSize: 9 },
   paymentCard: { borderRadius: 20, borderWidth: 1, padding: spacing.lg, marginTop: spacing.md, marginBottom: spacing.md },
   paymentTitle: { fontSize: 17, marginBottom: spacing.sm },
   breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },

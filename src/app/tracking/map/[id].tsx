@@ -28,8 +28,6 @@ import { spacing, typography, radii, shadows, ColorTokens } from '../../../const
 import { useAppTheme } from '../../_layout';
 import { avatarSource } from '../../../constants/images';
 
-const UYO_CENTER: LatLng = { latitude: 5.0377, longitude: 7.9128 };
-
 export default function TrackingMapScreen() {
   const { colors } = useAppTheme();
   const styles = makeStyles(colors);
@@ -53,13 +51,19 @@ export default function TrackingMapScreen() {
   const provider = booking.provider;
   const trackingProvider = tracking?.provider;
 
-  // Determine map center and markers
+  const addressCoords: LatLng | null = booking.address?.coordinates
+    ? {
+        latitude: booking.address.coordinates.latitude,
+        longitude: booking.address.coordinates.longitude,
+      }
+    : null;
+
   const destinationCoords: LatLng | null = tracking?.destination
     ? {
         latitude: tracking.destination.lat,
         longitude: tracking.destination.lng,
       }
-    : null;
+    : addressCoords;
 
   const providerCoords: LatLng | null = tracking?.location
     ? {
@@ -68,16 +72,50 @@ export default function TrackingMapScreen() {
       }
     : null;
 
-  const mapCenter = destinationCoords || UYO_CENTER;
+  // Center on the destination (or booking address), else the provider location.
+  const mapCenter: LatLng | null = destinationCoords || providerCoords || null;
 
   const hasProviderLocation = Boolean(providerCoords);
   const hasDestination = Boolean(destinationCoords);
 
+  const destinationLabel =
+    tracking?.destination?.label ||
+    (booking.address ? `${booking.address.houseNumber} ${booking.address.street}` : 'Destination');
+
   // Build route line if we have both
   const routeLine: LatLng[] | null = hasProviderLocation && hasDestination ? [providerCoords!, destinationCoords!] : null;
 
+  if (!mapCenter) {
+    return (
+      <View style={styles.screen}>
+        <View style={styles.topOverlay}>
+          <View style={styles.topControlRow}>
+            <Pressable
+              onPress={() => router.back()}
+              style={styles.floatingBackButton}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
+              <ArrowLeft size={22} color={colors.textPrimary} />
+            </Pressable>
+          </View>
+        </View>
+        <View style={styles.emptyStateWrap}>
+          <View style={styles.emptyStateCard}>
+            <MapPin size={28} color={colors.textMuted} />
+            <Text style={styles.emptyStateTitle}>Provider location not available yet</Text>
+            <Text style={styles.emptyStateSubtitle}>
+              The map will centre here once a location is shared.
+            </Text>
+            <Button title="Go Back" variant="primary" size="md" onPress={() => router.back()} />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   const handleRecenter = () => {
-    const target = providerCoords || destinationCoords || UYO_CENTER;
+    const target = providerCoords || destinationCoords || mapCenter;
     mapRef.current?.animateToRegion(
       {
         ...target,
@@ -142,8 +180,8 @@ export default function TrackingMapScreen() {
     }
   };
 
-  const etaMinutes = tracking?.etaMinutes;
-  const distanceKm = tracking?.distanceKm;
+  const etaMinutes = tracking?.etaMinutes ?? null;
+  const distanceKm = tracking?.distanceKm ?? null;
   const providerName = trackingProvider?.name || provider?.name || 'Assigned Provider';
 
   return (
@@ -166,13 +204,13 @@ export default function TrackingMapScreen() {
         {hasDestination && (
           <Marker
             coordinate={destinationCoords!}
-            title={tracking?.destination?.label || 'Destination'}
+            title={destinationLabel}
             anchor={{ x: 0.5, y: 0.9 }}
           >
             <View style={styles.destinationWrap}>
-              {tracking?.destination?.label && (
+              {hasDestination && (
                 <View style={styles.destPinCallout}>
-                  <Text style={styles.destPinText}>{tracking.destination.label}</Text>
+                  <Text style={styles.destPinText}>{destinationLabel}</Text>
                 </View>
               )}
               <View style={styles.destCircle}>
@@ -218,15 +256,9 @@ export default function TrackingMapScreen() {
             <View style={styles.etaPill}>
               <Clock size={16} color={colors.primary} />
               <Text style={styles.etaPillText}>
-                {etaMinutes !== null ? `${etaMinutes} mins` : 'Arriving soon'}
+                {etaMinutes !== null ? `${etaMinutes} mins` : 'ETA —'}
                 {distanceKm !== null ? ` • ${distanceKm} km away` : ''}
               </Text>
-            </View>
-          )}
-
-          {!etaMinutes && !distanceKm && (
-            <View style={styles.etaPill}>
-              <Text style={styles.etaPillText}>Arriving soon</Text>
             </View>
           )}
 
@@ -241,7 +273,7 @@ export default function TrackingMapScreen() {
 
         {!hasProviderLocation && !isTrackingLoading && (
           <View style={styles.waitingPill}>
-            <Text style={styles.waitingText}>Waiting for provider to start moving</Text>
+            <Text style={styles.waitingText}>Provider location not available yet</Text>
           </View>
         )}
       </View>
@@ -528,5 +560,30 @@ const makeStyles = (colors: ColorTokens) =>
     loadingText: {
       ...typography.body,
       color: colors.textSecondary,
+    },
+    emptyStateWrap: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: spacing.lg,
+    },
+    emptyStateCard: {
+      backgroundColor: colors.surface,
+      borderRadius: radii.lg,
+      padding: spacing.lg,
+      alignItems: 'center',
+      gap: spacing.sm,
+      ...shadows.md,
+    },
+    emptyStateTitle: {
+      ...typography.title,
+      fontSize: 16,
+      color: colors.textPrimary,
+      textAlign: 'center',
+    },
+    emptyStateSubtitle: {
+      ...typography.body,
+      color: colors.textSecondary,
+      textAlign: 'center',
     },
   });

@@ -14,19 +14,15 @@ import {
   Phone,
   MessageSquare,
   Calendar,
-  Clock,
   MapPin,
   CheckCircle2,
   Circle,
-  AlertCircle,
-  FileText,
   Star,
-  Shield,
-  Car,
   RotateCcw,
 } from 'lucide-react-native';
 import { useBooking } from '../../services/queryClient';
-import { Booking, JobStatus } from '../../types';
+import { useBookingTracking } from '../../hooks/useBookingTracking';
+import { JobStatus } from '../../types';
 import { Badge, BadgeVariant } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
@@ -36,7 +32,7 @@ import { spacing, typography, radii, ColorTokens } from '../../constants/theme';
 import { useAppTheme } from '../_layout';
 import { avatarSource } from '../../constants/images';
 import { formatKoboToNaira } from '../../utils/currency';
-import { formatDateWAT, formatTimeWAT, formatDateTimeWAT } from '../../utils/date';
+import { formatDateWAT, formatTimeWAT } from '../../utils/date';
 
 interface LifecycleMilestone {
   key: string;
@@ -84,18 +80,48 @@ const LIFECYCLE_MILESTONES: LifecycleMilestone[] = [
   },
 ];
 
+const JOB_STATUS_VALUES: JobStatus[] = [
+  'DRAFT',
+  'REQUESTED',
+  'PAYMENT_PENDING',
+  'CONFIRMED',
+  'MATCHING',
+  'PROVIDER_ASSIGNED',
+  'PROVIDER_ACCEPTED',
+  'EN_ROUTE',
+  'ARRIVED',
+  'CHECK_IN',
+  'INSPECTION',
+  'IN_PROGRESS',
+  'AWAITING_APPROVAL',
+  'COMPLETED',
+  'CUSTOMER_CONFIRMATION',
+  'SETTLEMENT',
+  'WARRANTY_ACTIVE',
+  'CLOSED',
+  'CANCELLED',
+];
+
 export default function TrackingDetailScreen() {
   const { colors } = useAppTheme();
   const styles = makeStyles(colors);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
 
+  const bookingId = typeof id === 'string' ? id : '';
+
   const {
     data: booking,
     isLoading,
     refetch,
     isRefetching,
-  } = useBooking(typeof id === 'string' ? id : '');
+  } = useBooking(bookingId);
+
+  const {
+    data: tracking,
+    refetch: refetchTracking,
+    isRefetching: isTrackingRefetching,
+  } = useBookingTracking(bookingId);
 
   if (isLoading || !booking) {
     return (
@@ -130,20 +156,38 @@ export default function TrackingDetailScreen() {
     }
   };
 
-  const badgeConfig = getStatusBadgeConfig(booking.status);
+  // Live tracking data — never invent values; nulls render as neutral states.
+  const trackingProvider = tracking?.provider ?? null;
+  const bookingProvider = booking.provider ?? null;
+  const provider = trackingProvider ?? bookingProvider;
+  const providerName = provider?.name ?? 'Assigned Provider';
+  const providerAvatar = provider?.avatarUrl ?? null;
+
+  const liveStatus = String(tracking?.status ?? '').toUpperCase();
+  const effectiveStatus: JobStatus = JOB_STATUS_VALUES.includes(liveStatus as JobStatus)
+    ? (liveStatus as JobStatus)
+    : booking.status;
+
+  const etaMinutes = tracking?.etaMinutes ?? null;
+  const distanceKm = tracking?.distanceKm ?? null;
+  const hasLiveLocation = Boolean(tracking?.location);
+  const destinationLabel = tracking?.destination?.label ?? null;
+
+  const badgeConfig = getStatusBadgeConfig(effectiveStatus);
 
   // Determine stage progression
   const currentStatusIndex = (() => {
     for (let i = LIFECYCLE_MILESTONES.length - 1; i >= 0; i--) {
-      if (LIFECYCLE_MILESTONES[i].statuses.includes(booking.status)) {
+      if (LIFECYCLE_MILESTONES[i].statuses.includes(effectiveStatus)) {
         return i;
       }
     }
     return 0;
   })();
 
-  const isCompleted = ['COMPLETED', 'CUSTOMER_CONFIRMATION', 'SETTLEMENT', 'WARRANTY_ACTIVE', 'CLOSED'].includes(booking.status);
-  const isCancelled = booking.status === 'CANCELLED';
+  const isCompleted = ['COMPLETED', 'CUSTOMER_CONFIRMATION', 'SETTLEMENT', 'WARRANTY_ACTIVE', 'CLOSED'].includes(effectiveStatus);
+  const isCancelled = effectiveStatus === 'CANCELLED';
+  const showLivePulse = !isCompleted && !isCancelled && hasLiveLocation;
 
   return (
     <View style={styles.screen}>
@@ -165,8 +209,11 @@ export default function TrackingDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         refreshControl={
           <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={refetch}
+            refreshing={isRefetching || isTrackingRefetching}
+            onRefresh={() => {
+              refetch();
+              refetchTracking();
+            }}
             tintColor={colors.primary}
           />
         }
@@ -196,12 +243,23 @@ export default function TrackingDetailScreen() {
             onPress={() => router.push(`/tracking/map/${booking.id}`)}
           >
             <View style={styles.mapTeaserHeader}>
-              <View style={styles.gpsPulseDot} />
+              <View style={[styles.gpsPulseDot, !showLivePulse && styles.gpsPulseDotIdle]} />
               <Text style={styles.mapTeaserTitle}>Live GPS Provider Tracking</Text>
             </View>
             <Text style={styles.mapTeaserEta}>
-              {isCompleted ? 'Job successfully fulfilled on location' : 'Estimated arrival: ~14 mins (2.1 km away)'}
+              {isCompleted
+                ? 'Job successfully fulfilled on location'
+                : hasLiveLocation
+                  ? `Estimated arrival: ${
+                      etaMinutes !== null ? `~${etaMinutes} mins` : '—'
+                    }${
+                      distanceKm !== null ? ` • ${distanceKm} km away` : ' • —'
+                    }`
+                  : 'Awaiting live location'}
             </Text>
+            {destinationLabel && !isCompleted && (
+              <Text style={styles.mapTeaserDestination}>Destination: {destinationLabel}</Text>
+            )}
             <Button
               title="Open Interactive Map"
               size="sm"
@@ -214,24 +272,25 @@ export default function TrackingDetailScreen() {
         )}
 
         {/* Assigned Technician Profile Card */}
-        {booking.provider ? (
+        {bookingProvider || trackingProvider ? (
           <Card variant="elevated" padding="md" style={styles.providerCard}>
             <View style={styles.providerHeaderRow}>
-              <Image source={avatarSource(booking.provider.avatarUrl)} style={styles.providerAvatar} />
+              <Image source={avatarSource(providerAvatar)} style={styles.providerAvatar} />
               <View style={styles.providerMeta}>
                 <View style={styles.providerNameRow}>
-                  <Text style={styles.providerName}>{booking.provider.name}</Text>
+                  <Text style={styles.providerName}>{providerName}</Text>
+                  {trackingProvider && (
+                    <Badge label="Live" variant="success" size="sm" />
+                  )}
                 </View>
-                <View style={styles.providerRatingRow}>
-                  <Star size={13} color="#FF9800" fill="#FF9800" />
-                  <Text style={styles.providerRatingText}>
-                    {booking.provider.rating.toFixed(1)} ({booking.provider.reviewCount} jobs)
-                  </Text>
-                </View>
-                <View style={styles.vehicleRow}>
-                  <Car size={13} color={colors.textSecondary} />
-                  <Text style={styles.vehicleText}>Service Van • LSR-482-AB</Text>
-                </View>
+                {bookingProvider && (
+                  <View style={styles.providerRatingRow}>
+                    <Star size={13} color="#FF9800" fill="#FF9800" />
+                    <Text style={styles.providerRatingText}>
+                      {bookingProvider.rating.toFixed(1)} ({bookingProvider.reviewCount} jobs)
+                    </Text>
+                  </View>
+                )}
               </View>
             </View>
 
@@ -481,6 +540,9 @@ const makeStyles = (colors: ColorTokens) => StyleSheet.create({
     backgroundColor: colors.success,
     marginRight: spacing.xs + 2,
   },
+  gpsPulseDotIdle: {
+    backgroundColor: colors.textMuted,
+  },
   mapTeaserTitle: {
     ...typography.title,
     fontSize: 16,
@@ -488,6 +550,11 @@ const makeStyles = (colors: ColorTokens) => StyleSheet.create({
   },
   mapTeaserEta: {
     ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  mapTeaserDestination: {
+    ...typography.caption,
     color: colors.textSecondary,
     marginBottom: spacing.md,
   },
@@ -532,15 +599,6 @@ const makeStyles = (colors: ColorTokens) => StyleSheet.create({
     ...typography.caption,
     color: colors.textSecondary,
     marginLeft: 4,
-  },
-  vehicleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  vehicleText: {
-    ...typography.micro,
-    color: colors.textMuted,
   },
   providerContactBar: {
     flexDirection: 'row',

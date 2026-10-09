@@ -15,7 +15,8 @@ export interface LocationState {
 
 export const useLocationStore = create<LocationState>((set, get) => ({
   currentAddress: null,
-  selectedCity: 'Uyo',
+  // Neutral until real GPS/coverage/reverse-geocode determines a city.
+  selectedCity: '',
   savedAddresses: [],
 
   setAddress: (address) => {
