@@ -1,107 +1,277 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
-import { MapPin } from 'lucide-react-native';
-import { Header, Button } from '../../components/ui';
+import { MapPin, Navigation } from 'lucide-react-native';
+import { Header, Button, Input } from '../../components/ui';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import { useLocationStore } from '../../stores/locationStore';
+import { useAuthStore } from '../../stores/authStore';
+import { useAddAddress } from '../../services/queryClient';
 import { apiFetch } from '@/services/api/client';
+
+type Region = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
+type CoverageCity = { cityId: string; city: string; lat: number; lng: number; radiusKm: number };
+type GeoResult = { lat?: number; lng?: number; formatted?: string };
+
+const MAP_DELTA = { latitudeDelta: 0.01, longitudeDelta: 0.01 };
+const REVERSE_DEBOUNCE_MS = 450;
+const SEARCH_DEBOUNCE_MS = 400;
+const MIN_SEARCH_CHARS = 3;
+
+/** (0,0) means "no fix yet" — never a real service location. */
+function isRealCoord(lat?: number | null, lng?: number | null): boolean {
+  return (
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lng) <= 180 &&
+    !(lat === 0 && lng === 0)
+  );
+}
 
 export default function AddLocationScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
-  const { currentAddress } = useLocationStore();
+  const user = useAuthStore((s) => s.user);
+  const { currentAddress, currentCoordinates } = useLocationStore();
+  const addAddressMutation = useAddAddress();
 
-  const [region, setRegion] = useState({
-    latitude: currentAddress?.coordinates?.latitude ?? 0,
-    longitude: currentAddress?.coordinates?.longitude ?? 0,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
+  const [region, setRegion] = useState<Region | null>(() => {
+    if (isRealCoord(currentAddress?.coordinates?.latitude, currentAddress?.coordinates?.longitude)) {
+      return { ...currentAddress!.coordinates, ...MAP_DELTA };
+    }
+    if (isRealCoord(currentCoordinates?.latitude, currentCoordinates?.longitude)) {
+      return { ...currentCoordinates!, ...MAP_DELTA };
+    }
+    return null;
   });
+  const startRegionRef = useRef<Region | null>(region);
 
   const [addressText, setAddressText] = useState('');
   const [hint, setHint] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(region == null);
   const [city, setCity] = useState<string | undefined>(currentAddress?.city);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (region.latitude !== 0 || region.longitude !== 0) return;
-    let mounted = true;
-    (async () => {
-      try {
-        const { status: permissionStatus } = await Location.getForegroundPermissionsAsync();
-        if (permissionStatus !== 'granted') {
-          const req = await Location.requestForegroundPermissionsAsync();
-          if (req.status !== 'granted' || !mounted) return;
-        }
-        const location = await Location.getCurrentPositionAsync({});
-        if (!mounted) return;
-        const newRegion = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        };
-        setRegion(newRegion);
-      } catch (e) {
-        console.error(e);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [region.latitude, region.longitude]);
+  const reverseDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchSeqRef = useRef(0);
+  /** Who owns the address input: typed text wins over reverse-geocode labels. */
+  const sourceRef = useRef<'gps' | 'map' | 'input'>('gps');
+  const mountedRef = useRef(true);
 
-  const reverseGeocode = async (lat: number, lng: number) => {
+  const applyCenter = useCallback((lat: number, lng: number) => {
+    setRegion((prev) => ({
+      latitude: lat,
+      longitude: lng,
+      latitudeDelta: prev?.latitudeDelta ?? MAP_DELTA.latitudeDelta,
+      longitudeDelta: prev?.longitudeDelta ?? MAP_DELTA.longitudeDelta,
+    }));
+  }, []);
+
+  const reverseGeocode = useCallback(async (lat: number, lng: number) => {
     try {
-      const res = await apiFetch<{ area?: string; city?: string }>(`/v1/geo/reverse-geocode?lat=${lat}&lng=${lng}`);
-      if (res) {
-        const label = [res.area, res.city].filter(Boolean).join(', ');
-        setAddressText(label);
-        setCity(res.city || undefined);
-        setHint('');
+      const res = await apiFetch<{ area?: string; city?: string } | null>(
+        `/v1/geo/reverse-geocode?lat=${lat}&lng=${lng}`,
+        { auth: false },
+      );
+      if (!res || !mountedRef.current) return;
+      const label = [res.area, res.city].filter(Boolean).join(', ');
+      // While the user is typing, their query is the source of truth.
+      if (sourceRef.current !== 'input' && label) setAddressText(label);
+      if (res.city) {
+        setCity(res.city);
+        useLocationStore.getState().setSelectedCity(res.city);
+      }
+      setHint('');
+    } catch (e) {
+      console.warn('reverse geocode failed', e);
+    }
+  }, []);
+
+  const locateOnce = useCallback(async () => {
+    // 1) Real device GPS.
+    try {
+      let perm = await Location.getForegroundPermissionsAsync();
+      if (perm.status !== 'granted') perm = await Location.requestForegroundPermissionsAsync();
+      if (perm.status === 'granted') {
+        const pos = await Location.getCurrentPositionAsync({});
+        const { latitude, longitude } = pos.coords;
+        if (isRealCoord(latitude, longitude)) {
+          if (!mountedRef.current) return;
+          setLocating(false);
+          sourceRef.current = 'gps';
+          applyCenter(latitude, longitude);
+          await reverseGeocode(latitude, longitude);
+          return;
+        }
       }
     } catch (e) {
-      console.error(e);
+      console.warn('GPS unavailable', e);
     }
+    // 2) Backend-configured coverage center (launch city from the API — never hardcoded).
+    try {
+      const coverage = await apiFetch<CoverageCity[] | null>('/v1/geo/coverage', { auth: false });
+      const first = Array.isArray(coverage)
+        ? coverage.find((c) => isRealCoord(c.lat, c.lng))
+        : undefined;
+      if (first && mountedRef.current) {
+        setLocating(false);
+        sourceRef.current = 'gps';
+        applyCenter(first.lat, first.lng);
+        await reverseGeocode(first.lat, first.lng);
+        return;
+      }
+    } catch (e) {
+      console.warn('coverage unavailable', e);
+    }
+    if (!mountedRef.current) return;
+    setLocating(false);
+    setHint('Location unavailable. Type your address to search for it.');
+  }, [applyCenter, reverseGeocode]);
+
+  /** Forward geocode: typed query → map center/marker + stored coordinates. */
+  const forwardGeocode = useCallback(
+    async (query: string) => {
+      const seq = ++searchSeqRef.current;
+      try {
+        const cityHint =
+          useLocationStore.getState().selectedCity || useLocationStore.getState().currentAddress?.city || '';
+        const url =
+          `/v1/geo/geocode?q=${encodeURIComponent(query)}` +
+          (cityHint ? `&city=${encodeURIComponent(cityHint)}` : '');
+        const res = await apiFetch<GeoResult | null>(url, { auth: false });
+        if (!mountedRef.current || seq !== searchSeqRef.current) return; // stale response
+        const lat = res?.lat;
+        const lng = res?.lng;
+        if (!isRealCoord(lat, lng)) return;
+        sourceRef.current = 'input'; // typed text stays authoritative
+        applyCenter(lat as number, lng as number);
+        setHint('');
+        // Refresh city only — reverseGeocode must not overwrite typed text.
+        void reverseGeocode(lat as number, lng as number);
+      } catch (e) {
+        if (seq === searchSeqRef.current) console.warn('forward geocode failed', e);
+      }
+    },
+    [applyCenter, reverseGeocode],
+  );
+
+  useEffect(() => {
+    mountedRef.current = true;
+    const start = startRegionRef.current;
+    if (start) {
+      void reverseGeocode(start.latitude, start.longitude);
+    } else {
+      void locateOnce();
+    }
+    return () => {
+      mountedRef.current = false;
+      if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, [locateOnce, reverseGeocode]);
+
+  const handleAddressChange = (text: string) => {
+    sourceRef.current = 'input';
+    setAddressText(text);
+    setHint('');
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    const query = text.trim();
+    if (query.length < MIN_SEARCH_CHARS) return;
+    searchDebounceRef.current = setTimeout(() => {
+      void forwardGeocode(query);
+    }, SEARCH_DEBOUNCE_MS);
   };
 
-  const handleRegionChangeComplete = (r: typeof region) => {
+  const handleRegionChangeComplete = (r: Region) => {
     setRegion(r);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      reverseGeocode(r.latitude, r.longitude);
-    }, 500);
+    if (sourceRef.current === 'input') return; // programmatic move caused by a typed search
+    sourceRef.current = 'map';
+    if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
+    reverseDebounceRef.current = setTimeout(() => {
+      void reverseGeocode(r.latitude, r.longitude);
+    }, REVERSE_DEBOUNCE_MS);
   };
 
-  const handleContinue = () => {
-    if (!addressText.trim()) {
-      setHint('Please select or wait for the address to be detected');
+  const handleUseMyLocation = () => {
+    setLocating(true);
+    setHint('');
+    void locateOnce();
+  };
+
+  const handleContinue = async () => {
+    const text = addressText.trim();
+    if (!text) {
+      setHint('Enter an address, or allow location access so we can detect one.');
       return;
     }
-    useLocationStore.getState().setAddress({
-      id: 'picked',
-      street: addressText,
-      city,
-      state: undefined,
-      coordinates: { latitude: region.latitude, longitude: region.longitude },
-    } as any);
-    router.back();
+    if (!region) {
+      setHint('Set your location first — allow GPS or search for your address.');
+      return;
+    }
+    if (saving) return;
+    setSaving(true);
+    setHint('');
+    try {
+      const created = await addAddressMutation.mutateAsync({
+        userId: user?.id ?? '',
+        label: 'Home',
+        street: text,
+        houseNumber: '',
+        landmark: '',
+        contactPhone: user?.phone ?? currentAddress?.contactPhone ?? '',
+        isDefault: false,
+        city: city || undefined,
+        state: currentAddress?.state,
+        coordinates: { latitude: region.latitude, longitude: region.longitude },
+      });
+      const store = useLocationStore.getState();
+      store.setAddress(created);
+      store.addSavedAddress(created);
+      router.back();
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message
+          ? err.message
+          : 'Could not save this address. Check your connection and try again.';
+      setHint(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <Header title="Your Address/Location" onBack={() => router.back()} />
-      
+
       <View style={styles.mapContainer}>
-        {Platform.OS === 'web' ? (
-          <View style={[styles.webMapFallback, { backgroundColor: colors.primaryLight }]}>
-            <Text style={{ color: colors.primary, fontFamily: fonts.bold }}>Map View</Text>
+        {Platform.OS === 'web' || !region ? (
+          <View style={[styles.mapFallback, { backgroundColor: colors.primaryLight }]}>
             <MapPin size={40} color={colors.primary} />
+            <Text style={{ color: colors.primary, fontFamily: fonts.bold, textAlign: 'center' }}>
+              {!region
+                ? locating
+                  ? 'Finding your location…'
+                  : 'Location unavailable'
+                : 'Map View'}
+            </Text>
+            {!region && (
+              <Button
+                title="Use my current location"
+                onPress={handleUseMyLocation}
+                size="sm"
+                variant="secondary"
+                loading={locating}
+                icon={<Navigation size={16} color={colors.primary} />}
+              />
+            )}
           </View>
         ) : (
           <MapView
@@ -117,28 +287,36 @@ export default function AddLocationScreen() {
 
       <View style={[styles.bottomCard, { backgroundColor: colors.surface }]}>
         <View style={styles.handle} />
-        
+
         <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Location Details</Text>
-        
+
         <View style={[styles.divider, { backgroundColor: colors.border }]} />
-        
-        <Text style={[styles.label, { color: colors.textPrimary }]}>Address</Text>
-        
-        <View style={[styles.inputBox, { backgroundColor: colors.background }]}>
-          <Text style={[styles.inputText, { color: colors.textPrimary }]} numberOfLines={1}>
-            {addressText || 'Move the map to detect address'}
-          </Text>
-          <MapPin size={20} color={colors.textPrimary} />
-        </View>
-        {hint ? (
-          <Text style={{ color: colors.error, fontFamily: fonts.regular, fontSize: 12, marginBottom: spacing.sm }}>
-            {hint}
-          </Text>
-        ) : null}
 
         <Button
-          title="Continue"
+          title="Use my current location"
+          onPress={handleUseMyLocation}
+          size="md"
+          variant="secondary"
+          loading={locating}
+          icon={<Navigation size={16} color={colors.primary} />}
+          style={styles.locateBtn}
+        />
+
+        <Input
+          label="Address"
+          value={addressText}
+          onChangeText={handleAddressChange}
+          placeholder="Start typing your address…"
+          leftIcon={<MapPin size={18} color={colors.textSecondary} />}
+          helperText="Type to search — the map follows your address"
+          error={hint || undefined}
+          autoCorrect
+        />
+
+        <Button
+          title={saving ? 'Saving…' : 'Continue'}
           onPress={handleContinue}
+          loading={saving}
           size="lg"
           style={styles.continueBtn}
         />
@@ -158,12 +336,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  webMapFallback: {
+  mapFallback: {
     width: '100%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 10,
+    paddingHorizontal: spacing.xl,
   },
   bottomCard: {
     borderTopLeftRadius: radii.modalSheet,
@@ -197,29 +376,10 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: spacing.lg,
   },
-  label: {
-    fontFamily: fonts.semiBold,
-    fontSize: 16,
+  locateBtn: {
     marginBottom: spacing.sm,
-  },
-  inputBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.lg,
-    borderRadius: radii.lg,
-    marginBottom: spacing.md,
-  },
-  inputText: {
-    fontFamily: fonts.regular,
-    fontSize: 15,
-    flex: 1,
-    marginRight: spacing.sm,
   },
   continueBtn: {
     width: '100%',
   },
 });
-
-

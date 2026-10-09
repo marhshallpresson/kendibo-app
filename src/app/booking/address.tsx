@@ -35,7 +35,7 @@ const ADDRESS_TYPES = ['Home', 'Office', 'Apartment', 'Other'];
 export default function BookingAddressScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
-  const { currentAddress, setAddress, savedAddresses, addSavedAddress } = useLocationStore();
+  const { currentAddress, setAddress, savedAddresses, addSavedAddress, currentCoordinates } = useLocationStore();
 
   const [selectedAddressId, setSelectedAddressId] = useState<string>(
     currentAddress?.id || (savedAddresses[0]?.id ?? '')
@@ -169,7 +169,9 @@ export default function BookingAddressScreen() {
           isDefault,
           city: currentAddress?.city || undefined,
           state: currentAddress?.state || undefined,
-          coordinates: currentAddress?.coordinates || { latitude: 0, longitude: 0 },
+          coordinates:
+            currentAddress?.coordinates ||
+            currentCoordinates || { latitude: 0, longitude: 0 },
         });
 
         setSelectedAddressId(newAddress.id);

@@ -8,13 +8,17 @@ import { fonts } from '@/constants/theme';
 import { useLocationStore } from '@/stores/locationStore';
 
 type Status = 'checking' | 'ok' | 'unsupported' | 'error';
+type ZoneCheck = { serviceable?: boolean; city?: string; zone?: string };
 type Coverage = { cityId: string; city: string; lat: number; lng: number; radiusKm: number; zones: { zone: string; lat: number; lng: number; radiusKm: number }[] };
 
 /**
  * Location verification is NON-BLOCKING: the app always opens. Failures show
  * as a dismissible in-app notification with a Retry button, and the supported
- * city coordinates are listed so a user inside Uyo/Eket can see exactly where
- * we cover instead of hitting a dead end.
+ * city coordinates are listed so a user inside the coverage area can see
+ * exactly where we cover instead of hitting a dead end.
+ *
+ * NOTE: apiFetch unwraps the backend `{data}` envelope, so every geo payload
+ * arrives already unwrapped (e.g. zones/check → `{serviceable, city?}`).
  */
 export function GeofenceGuard({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<Status>('checking');
@@ -24,15 +28,21 @@ export function GeofenceGuard({ children }: { children: React.ReactNode }) {
   const { colors } = useAppTheme();
 
   const verifyWithBackend = useCallback(async (lat: number, lng: number) => {
-    const res = await apiFetch<{ data: { serviceable: boolean; city?: string } }>(
+    // Geo routes are public on the API — never gate them on a session token.
+    const res = await apiFetch<ZoneCheck | null>(
       `/v1/geo/zones/check?lat=${lat}&lng=${lng}`,
+      { auth: false },
     );
-    const serviceable = res.data?.serviceable ?? false;
+    const serviceable = res?.serviceable ?? false;
+    // Real fix is worth keeping whether or not the point is serviceable.
+    useLocationStore.getState().setCoordinates({ latitude: lat, longitude: lng });
     setStatus(serviceable ? 'ok' : 'unsupported');
-    if (serviceable) {
+    if (serviceable && res?.city) {
+      useLocationStore.getState().setSelectedCity(res.city);
       try {
-        const reverse = await apiFetch<{ area?: string; city?: string }>(
+        const reverse = await apiFetch<{ area?: string; city?: string } | null>(
           `/v1/geo/reverse-geocode?lat=${lat}&lng=${lng}`,
+          { auth: false },
         );
         if (reverse && (reverse.area || reverse.city)) {
           const current = useLocationStore.getState().currentAddress;
@@ -93,8 +103,15 @@ export function GeofenceGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-mount sync with location + backend zones; state set in async callbacks
     checkLocation();
-    apiFetch<{ data: Coverage[] }>('/v1/geo/coverage')
-      .then((r) => setCoverage(r.data ?? []))
+    apiFetch<Coverage[] | null>('/v1/geo/coverage', { auth: false })
+      .then((r) => {
+        const list = Array.isArray(r) ? r : [];
+        setCoverage(list);
+        // Seed the served city so forward-geocode queries are biased to the
+        // configured coverage area instead of the API's own default.
+        const store = useLocationStore.getState();
+        if (!store.selectedCity && list[0]?.city) store.setSelectedCity(list[0].city);
+      })
       .catch(() => setCoverage([]));
   }, [checkLocation]);
 
