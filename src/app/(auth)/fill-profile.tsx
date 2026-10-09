@@ -50,13 +50,14 @@ export default function FillProfileScreen() {
     try {
       const done = await uploadMedia(pick.uri, 'avatar', pick.mime);
       setAvatarUrl(done.url);
-    } catch {
-      setAvatarUrl(pick.uri);
+    } catch (e) {
+      // Never fall back to the local file:// URI — it is unreadable on any
+      // other device and would be persisted into the profile as the avatar.
+      setError(e instanceof Error ? e.message : 'Photo upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
   };
-
 
   const handleContinue = async () => {
     setError('');

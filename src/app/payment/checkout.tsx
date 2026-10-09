@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWatchupScreen } from '../../hooks/useWatchupScreen';
 import {
   View,
@@ -88,16 +88,19 @@ function resolveScheduledAt(date?: string, timeSlot?: string): string {
 function describeFailure(err: unknown): string {
   if (err instanceof ApiError) {
     const hint = `${err.code ?? ''} ${err.message}`.toLowerCase();
+    if (err.status === 401) return 'Your session has expired. Please sign in again.';
+    if (err.code === 'AMOUNT_MISMATCH' || hint.includes('amount_mismatch')) {
+      return 'The price changed before payment went through. Go back and refresh the order.';
+    }
     if (hint.includes('quote_required')) {
       return 'This service is priced after inspection — request a quote instead of paying upfront.';
     }
     if (hint.includes('service_not_found')) {
       return 'This service is no longer available. Go back and pick another one.';
     }
-    if (hint.includes('uuid') || hint.includes('address_id') || hint.includes('address')) {
+    if (hint.includes('uuid') || hint.includes('address_id')) {
       return ADDRESS_REQUIRED;
     }
-    if (err.status === 401) return 'Your session has expired. Please sign in again.';
     if (err.code === 'BOOKING_ERROR') {
       const message = err.message.trim();
       if (message && message.length < 160 && !message.startsWith('{')) {
@@ -141,6 +144,20 @@ export default function CheckoutScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Server-priced breakdown from POST /v1/pricing/quote. The backend charges
+   * EXACTLY this number (it rejects any other amountKobo with AMOUNT_MISMATCH),
+   * so the visible total, the Pay button and the payment call all read from it.
+   * `null` means we have not verified a price yet -> paying is disabled.
+   */
+  const [serverQuote, setServerQuote] = useState<{
+    serviceId: string;
+    addOnKey: string;
+    totalKobo: number;
+    vatKobo: number;
+    platformFeeKobo: number;
+  } | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   const parsedSubtotal = params.subtotalKobo ? parseInt(params.subtotalKobo, 10) : 0;
   const parsedDiscount = params.discountKobo ? parseInt(params.discountKobo, 10) : 0;
@@ -150,7 +167,6 @@ export default function CheckoutScreen() {
   const activeDiscount = parsedDiscount > 0 ? parsedDiscount : 0;
 
   const financialBreakdown = calculateBookingTotalKobo(activeSubtotal, activeDiscount, 0, 50000);
-  const finalTotalKobo = params.totalKobo ? parseInt(params.totalKobo, 10) : financialBreakdown.totalKobo;
 
   const displayItems = items;
 
@@ -166,6 +182,67 @@ export default function CheckoutScreen() {
   const targetAddOnIds = (targetItem?.selectedAddOns ?? [])
     .map((a) => a.addOn.id)
     .filter((id) => Boolean(id));
+
+  // Ask the pricing engine what this booking will cost. bookingService.create
+  // prices with exactly {serviceId, addOnIds}, so this total IS the amount the
+  // payments endpoint will accept.
+  useEffect(() => {
+    let cancelled = false;
+    if (!targetServiceId) return () => { cancelled = true; };
+    apiFetch<{
+      totalKobo?: string;
+      vatKobo?: string;
+      platformFeeKobo?: string;
+    }>('/v1/pricing/quote', {
+      method: 'POST',
+      auth: false,
+      body: { serviceId: targetServiceId, addOnIds: targetAddOnIds },
+    })
+      .then((b) => {
+        if (cancelled) return;
+        const total = Number(b?.totalKobo);
+        if (!b || !Number.isFinite(total) || total <= 0) {
+          setServerQuote(null);
+          setQuoteError('We could not verify the price for this service.');
+          return;
+        }
+        setQuoteError(null);
+        setServerQuote({
+          serviceId: targetServiceId,
+          addOnKey: targetAddOnIds.join('|'),
+          totalKobo: total,
+          vatKobo: Number(b?.vatKobo ?? 0),
+          platformFeeKobo: Number(b?.platformFeeKobo ?? 0),
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setServerQuote(null);
+        setQuoteError('We could not verify the price. Check your connection and try again.');
+      });
+    return () => { cancelled = true; };
+    // addOnIds is a fresh array each render; key the effect on its contents.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetServiceId, targetAddOnIds.join('|')]);
+
+  // Ignore a quote that belongs to a different service/add-on combination
+  // (state may be stale for one render while the new fetch is in flight).
+  const verifiedQuote =
+    serverQuote &&
+    serverQuote.serviceId === targetServiceId &&
+    serverQuote.addOnKey === targetAddOnIds.join('|')
+      ? serverQuote
+      : null;
+
+  // The ONLY number we are allowed to charge: the server's price for this
+  // exact service + add-on combination. Client math is display-only fallback.
+  const finalTotalKobo = verifiedQuote
+    ? verifiedQuote.totalKobo
+    : params.totalKobo
+      ? parseInt(params.totalKobo, 10)
+      : financialBreakdown.totalKobo;
+  const hasVerifiedPrice =
+    verifiedQuote !== null && Number.isFinite(finalTotalKobo) && finalTotalKobo > 0;
 
   // One idempotency key per checkout attempt: retrying after a failure
   // re-uses the SAME booking (backend is UNIQUE(user_id, idempotency_key)),
@@ -196,8 +273,11 @@ export default function CheckoutScreen() {
       Alert.alert('Quote required', quoteMessage);
       return;
     }
-    if (finalTotalKobo <= 0) {
-      Alert.alert('Invalid Amount', 'The order total could not be calculated. Return to the service page and try again.');
+    if (!hasVerifiedPrice) {
+      Alert.alert(
+        'Price unavailable',
+        quoteError ?? 'The order total could not be verified. Check your connection and try again.',
+      );
       return;
     }
 
@@ -207,9 +287,12 @@ export default function CheckoutScreen() {
     setIsProcessing(true);
     setError(null);
     const paymentRef = newPaymentRef();
+    // Hoisted so a failure AFTER the booking exists can say so honestly and
+    // retry the payment alone (the booking idempotency key is reused).
+    let booking: { id: string; bookingNumber?: string; priceKobo?: string } | null = null;
     try {
       // 1. Create the real booking (server prices it via the pricing engine).
-      const booking = await apiFetch<{ id: string; bookingNumber?: string }>('/v1/bookings', {
+      booking = await apiFetch<{ id: string; bookingNumber?: string; priceKobo?: string }>('/v1/bookings', {
         method: 'POST',
         idempotencyKey: bookingIdemKey,
         body: {
@@ -222,13 +305,16 @@ export default function CheckoutScreen() {
       });
 
       // 2. Initiate a real Bachs checkout session against that booking.
+      //    amountKobo MUST be the server's price snapshot — the backend
+      //    rejects any other value with AMOUNT_MISMATCH.
+      const chargedKobo = Number(booking.priceKobo ?? finalTotalKobo);
       const session = await apiFetch<{ checkoutUrl?: string; reference?: string; checkoutId?: string }>(
         `/v1/bookings/${booking.id}/payments`,
         {
           method: 'POST',
           idempotencyKey: bookingIdemKey,
           body: {
-            amountKobo: String(finalTotalKobo),
+            amountKobo: String(chargedKobo),
             // Backend zod requires a valid email; phone-only accounts fall
             // back to the same placeholder the wallet topup endpoint uses.
             email: receiptEmail(user?.email),
@@ -260,7 +346,7 @@ export default function CheckoutScreen() {
           bookingId: booking.id,
           bookingNumber: booking.bookingNumber ?? '',
           paymentRef: session?.reference ?? paymentRef,
-          amountKobo: finalTotalKobo.toString(),
+          amountKobo: String(chargedKobo),
           method: 'BACHS_CHECKOUT',
           serviceName: targetServiceName,
         },
@@ -269,7 +355,19 @@ export default function CheckoutScreen() {
       setIsProcessing(false);
       const message = describeFailure(err);
       setError(message);
-      if (err instanceof ApiError && err.status === 400) {
+      if (booking) {
+        // The booking DID land — never claim nothing happened. Offer a retry
+        // that reuses the same booking (idempotency key) instead of creating
+        // a second one.
+        Alert.alert(
+          'Booking saved — payment not started',
+          `${message}\n\nYour booking ${booking.bookingNumber ? `(${booking.bookingNumber}) ` : ''}exists, and nothing was charged.`,
+          [
+            { text: 'Retry payment', onPress: () => handlePay() },
+            { text: 'View bookings', onPress: () => router.replace('/(tabs)/bookings') },
+          ],
+        );
+      } else if (err instanceof ApiError && err.status === 400) {
         // Contract/validation failure — retrying unchanged cannot succeed, so
         // explain instead of offering a "nothing was charged" retry loop.
         Alert.alert('Payment not started', `${message}\n\nNothing was charged.`, [{ text: 'OK' }]);
@@ -390,13 +488,13 @@ export default function CheckoutScreen() {
                 <View style={styles.sumRow}>
                   <Text style={[styles.sumLabel, { color: colors.textSecondary, fontFamily: fonts.regular }]}>VAT (7.5%)</Text>
                   <Text style={[styles.sumValue, { color: colors.textPrimary, fontFamily: fonts.semiBold }]}>
-                    {formatKoboToNaira(financialBreakdown.vatKobo)}
+                    {formatKoboToNaira(verifiedQuote ? verifiedQuote.vatKobo : financialBreakdown.vatKobo)}
                   </Text>
                 </View>
                 <View style={styles.sumRow}>
-                  <Text style={[styles.sumLabel, { color: colors.textSecondary, fontFamily: fonts.regular }]}>Platform & Escrow Fee</Text>
+                  <Text style={[styles.sumLabel, { color: colors.textSecondary, fontFamily: fonts.regular }]}>Platform Fee</Text>
                   <Text style={[styles.sumValue, { color: colors.textPrimary, fontFamily: fonts.semiBold }]}>
-                    {formatKoboToNaira(50000)}
+                    {verifiedQuote ? formatKoboToNaira(verifiedQuote.platformFeeKobo) : '…'}
                   </Text>
                 </View>
                 <View style={[styles.summaryDivider, { backgroundColor: colors.borderSubtle }]} />
@@ -421,9 +519,11 @@ export default function CheckoutScreen() {
               </View>
             </View>
 
-            {!!error && (
+            {!!(error ?? quoteError) && (
               <View style={[styles.errorBanner, { backgroundColor: colors.surface, borderColor: colors.error }]}>
-                <Text style={[styles.errorText, { color: colors.error, fontFamily: fonts.semiBold }]}>{error}</Text>
+                <Text style={[styles.errorText, { color: colors.error, fontFamily: fonts.semiBold }]}>
+                  {error ?? quoteError}
+                </Text>
               </View>
             )}
 
@@ -439,10 +539,10 @@ export default function CheckoutScreen() {
 
             <View style={styles.actionSection}>
               <Button
-                title={`Pay ${formatKoboToNaira(finalTotalKobo)}`}
+                title={hasVerifiedPrice ? `Pay ${formatKoboToNaira(finalTotalKobo)}` : 'Verifying price…'}
                 onPress={handlePay}
                 loading={isProcessing}
-                disabled={isProcessing || displayItems.length === 0}
+                disabled={isProcessing || displayItems.length === 0 || !hasVerifiedPrice}
                 size="lg"
                 variant="primary"
               />

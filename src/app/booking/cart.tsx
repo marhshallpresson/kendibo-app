@@ -25,6 +25,16 @@ import { useCartStore } from '../../stores/cartStore';
 import { useLocationStore } from '../../stores/locationStore';
 import { formatKoboToNaira, calculateVatKobo } from '../../utils/currency';
 
+/** Cart used to ship a hardcoded past date ('2026-10-07'); default to tomorrow. */
+const tomorrowISO = (): string => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+const tomorrowLabel = (): string =>
+  new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('en-NG', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+
 export default function BookingCartScreen() {
   useWatchupScreen('BookingCart');
 
@@ -98,7 +108,7 @@ export default function BookingCartScreen() {
         subtotalKobo: subtotalKobo.toString(),
         vatKobo: vatKobo.toString(),
         discountKobo: activeDiscountKobo.toString(),
-        scheduledDate: searchParams.scheduledDate || '2026-10-07',
+        scheduledDate: searchParams.scheduledDate || tomorrowISO(),
         timeSlot: searchParams.timeSlot || '10:00 AM - 12:00 PM',
         frequency: searchParams.frequency || 'ONCE',
         instructions: searchParams.instructions || '',
@@ -181,7 +191,7 @@ export default function BookingCartScreen() {
           <View style={styles.snapshotRow}>
             <Calendar size={14} color={colors.primary} />
             <Text style={[styles.snapshotText, { color: colors.textSecondary, fontFamily: fonts.regular }]}>
-              {searchParams.scheduledDate || 'Tomorrow, 07 Oct 2026'}
+              {searchParams.scheduledDate || tomorrowLabel()}
               {searchParams.frequency ? ` • ${searchParams.frequency}` : ''}
             </Text>
           </View>
