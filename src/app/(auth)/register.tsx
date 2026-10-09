@@ -22,6 +22,7 @@ import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import BrandLogo from '../../components/ui/BrandLogo';
 import GoogleIcon from '../../components/ui/GoogleIcon';
+import { useGoogleAuth, GOOGLE_CANCELLED } from '../../hooks/useGoogleAuth';
 
 export default function RegisterScreen() {
   useWatchupScreen('AuthRegister');
@@ -29,6 +30,7 @@ export default function RegisterScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ email?: string; phone?: string }>();
   const requestOtp = useAuthStore((s) => s.requestOtp);
+  const { signIn } = useGoogleAuth();
   const { colors } = useAppTheme();
 
   const [fullName, setFullName] = useState('');
@@ -42,6 +44,7 @@ export default function RegisterScreen() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [role, setRole] = useState<'customer' | 'provider'>('customer');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleSignUp = async () => {
@@ -97,7 +100,33 @@ export default function RegisterScreen() {
   };
 
   const handleSocialSignUp = async () => {
-    Alert.alert('Coming soon', 'Social sign-up is coming soon. Please continue with email.');
+    setErrorMessage('');
+    if (!agreeTerms) {
+      setErrorMessage('Please accept the Terms of Service & Privacy Policy');
+      return;
+    }
+    setIsGoogleLoading(true);
+    try {
+      const { isNew } = await signIn();
+      if (isNew) {
+        // New Google accounts pick Customer/Provider before entering the app.
+        router.replace('/(auth)/role-pick');
+        return;
+      }
+      const pin = useAuthStore.getState().pin;
+      const userRole = useAuthStore.getState().user?.role;
+      if (pin == null) {
+        router.replace('/(auth)/biometrics');
+      } else {
+        router.replace((userRole?.toLowerCase() === 'provider' ? '/(provider)' : '/(tabs)') as any);
+      }
+    } catch (err: any) {
+      if (err?.message !== GOOGLE_CANCELLED) {
+        setErrorMessage(err?.message || 'Google sign-up failed. Try again.');
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
   };
 
   const styles = React.useMemo(
@@ -422,8 +451,9 @@ export default function RegisterScreen() {
           <View style={styles.socialRow}>
             
             <TouchableOpacity
-              style={styles.socialBtn}
+              style={[styles.socialBtn, isGoogleLoading && { opacity: 0.5 }]}
               onPress={handleSocialSignUp}
+              disabled={isGoogleLoading}
               accessibilityLabel="Sign up with Google"
             >
               <GoogleIcon size={22} />

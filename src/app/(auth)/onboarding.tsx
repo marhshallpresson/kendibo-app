@@ -23,6 +23,7 @@ import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import BrandLogo from '../../components/ui/BrandLogo';
 import GoogleIcon from '../../components/ui/GoogleIcon';
+import { useGoogleAuth, GOOGLE_CANCELLED } from '../../hooks/useGoogleAuth';
 
 interface Slide {
   id: string;
@@ -65,7 +66,35 @@ export default function OnboardingScreen() {
   const SCREEN_WIDTH = isWeb ? Math.min(windowDimensions.width, 480) : windowDimensions.width;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showLetsIn, setShowLetsIn] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  const { signIn } = useGoogleAuth();
+
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    try {
+      const { isNew } = await signIn();
+      if (isNew) {
+        // New Google accounts pick Customer/Provider before entering the app.
+        router.replace('/(auth)/role-pick');
+        return;
+      }
+      const pin = useAuthStore.getState().pin;
+      const role = useAuthStore.getState().user?.role;
+      if (pin == null) {
+        router.replace('/(auth)/biometrics');
+      } else {
+        router.replace((role?.toLowerCase() === 'provider' ? '/(provider)' : '/(tabs)') as any);
+      }
+    } catch (err: any) {
+      if (err?.message !== GOOGLE_CANCELLED) {
+        Alert.alert('Google sign-in', err?.message || 'Google sign-in failed. Try again.');
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const goToLogin = () => {
     setOnboardingCompleted(true);
@@ -335,8 +364,9 @@ export default function OnboardingScreen() {
             
 
             <TouchableOpacity
-              style={styles.socialRowBtn}
-              onPress={() => Alert.alert('Coming soon', 'Google login is coming soon. Please continue with phone or email.')}
+              style={[styles.socialRowBtn, isGoogleLoading && { opacity: 0.5 }]}
+              onPress={handleGoogleSignIn}
+              disabled={isGoogleLoading}
               accessibilityLabel="Continue with Google"
             >
               <View style={styles.socialGlyphBox}>

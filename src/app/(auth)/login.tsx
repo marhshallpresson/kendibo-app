@@ -13,8 +13,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import { Mail, Phone, ArrowLeft } from 'lucide-react-native';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -25,12 +23,7 @@ import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import BrandLogo from '../../components/ui/BrandLogo';
 import GoogleIcon from '../../components/ui/GoogleIcon';
-
-WebBrowser.maybeCompleteAuthSession();
-
-const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '';
-const GOOGLE_IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '';
-const GOOGLE_ANDROID_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? '';
+import { useGoogleAuth, GOOGLE_CANCELLED } from '../../hooks/useGoogleAuth';
 
 
 export default function LoginScreen() {
@@ -38,7 +31,7 @@ export default function LoginScreen() {
 
   const router = useRouter();
   const requestOtp = useAuthStore((s) => s.requestOtp);
-  const loginWithGoogle = useAuthStore((s) => s.loginWithGoogle);
+  const { signIn } = useGoogleAuth();
   const { colors } = useAppTheme();
 
   const [authMode, setAuthMode] = useState<'phone' | 'email'>('email');
@@ -47,18 +40,6 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-
-  const googleConfigured =
-    Platform.OS === 'android'
-      ? Boolean(GOOGLE_ANDROID_CLIENT_ID)
-      : Platform.OS === 'ios'
-        ? Boolean(GOOGLE_IOS_CLIENT_ID)
-        : Boolean(GOOGLE_WEB_CLIENT_ID);
-  const [, , googlePromptAsync] = Google.useIdTokenAuthRequest({
-    webClientId: GOOGLE_WEB_CLIENT_ID || 'dummy-client-id-for-web',
-    iosClientId: GOOGLE_IOS_CLIENT_ID || 'dummy-client-id-for-ios',
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID || 'dummy-client-id-for-android',
-  });
 
   const resolveTarget = (): string | null => {
     if (authMode === 'phone') {
@@ -132,25 +113,15 @@ export default function LoginScreen() {
   };
 
   const handleSocialLogin = async () => {
-    if (!googleConfigured) {
-      Alert.alert('Google sign-in', 'Google sign-in is not set up yet');
-      return;
-    }
-    setIsGoogleLoading(true);
     setErrorMessage('');
+    setIsGoogleLoading(true);
     try {
-      const response = await googlePromptAsync();
-      if (response?.type !== 'success') {
-        // User dismissed the in-app browser session — stay on login.
+      const { isNew } = await signIn();
+      if (isNew) {
+        // New Google accounts pick Customer/Provider before entering the app.
+        router.replace('/(auth)/role-pick');
         return;
       }
-      const idToken =
-        (response.params as { id_token?: string } | undefined)?.id_token ?? '';
-      if (!idToken) {
-        setErrorMessage('Google sign-in failed. Try again.');
-        return;
-      }
-      await loginWithGoogle(idToken);
       const pin = useAuthStore.getState().pin;
       const role = useAuthStore.getState().user?.role;
       if (pin == null) {
@@ -159,7 +130,9 @@ export default function LoginScreen() {
         router.replace((role?.toLowerCase() === 'provider' ? '/(provider)' : '/(tabs)') as any);
       }
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Google sign-in failed. Try again.');
+      if (err?.message !== GOOGLE_CANCELLED) {
+        setErrorMessage(err?.message || 'Google sign-in failed. Try again.');
+      }
     } finally {
       setIsGoogleLoading(false);
     }

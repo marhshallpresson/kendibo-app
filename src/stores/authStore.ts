@@ -37,6 +37,8 @@ export interface AuthState {
   verifyOtp: (channel: OtpChannel, identity: string, code: string, name?: string, role?: string) => Promise<User>;
   /** Google SSO: POST /v1/auth/google {idToken} → persists session. Returns isNew flag. */
   loginWithGoogle: (idToken: string) => Promise<{ user: User; isNew: boolean }>;
+  /** Persist the post-signup role choice (POST /v1/auth/role) and update the stored user. */
+  setRole: (role: 'customer' | 'provider') => Promise<'CUSTOMER' | 'PROVIDER'>;
   /** Restore session on boot: loads tokens → GET /v1/me; 401 clears locally.
    *  Always ends by setting `hydrated: true`, and starts the app LOCKED when
    *  a device PIN exists. Safe to call more than once (runs once). */
@@ -307,6 +309,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (err instanceof ApiError) throw new Error(err.message);
       if (err instanceof Error) throw err;
       throw new Error('Google sign-in failed. Try again.');
+    }
+  },
+
+  setRole: async (role: 'customer' | 'provider') => {
+    try {
+      const data = await apiFetch<{ role: string }>('/v1/auth/role', {
+        method: 'POST',
+        body: { role },
+      });
+      const normalized = (data?.role ?? role.toUpperCase()) as 'CUSTOMER' | 'PROVIDER';
+      const current = get().user;
+      if (current) {
+        const merged = { ...current, role: normalized.toLowerCase() as User['role'] };
+        set({ user: merged });
+        try {
+          await storageSet(USER_KEY, JSON.stringify(merged));
+        } catch {
+          /* best-effort persist */
+        }
+      }
+      return normalized;
+    } catch (err) {
+      if (err instanceof ApiError) throw new Error(err.message);
+      if (err instanceof Error) throw err;
+      throw new Error('Could not save your role. Try again.');
     }
   },
 
