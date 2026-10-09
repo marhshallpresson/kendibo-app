@@ -65,17 +65,18 @@
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "pan",
       "permissions": [
-        "CAMERA",
-        "RECORD_AUDIO",
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION",
-        "FOREGROUND_SERVICE",
-        "FOREGROUND_SERVICE_LOCATION",
-        "READ_CONTACTS",
-        "CALL_PHONE",
-        "POST_NOTIFICATIONS",
-        "READ_MEDIA_IMAGES"
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.READ_CONTACTS",
+        "android.permission.CALL_PHONE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.WRITE_CONTACTS"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#002a63",
@@ -90,7 +91,12 @@
     },
     "extra": {
       "apiUrl": "http://10.0.2.2:3000",
-      "apiUrlDevice": "http://192.168.1.100:3000"
-    }
+      "apiUrlDevice": "http://192.168.1.100:3000",
+      "router": {},
+      "eas": {
+        "projectId": "68b6ae12-55bb-407c-a6d8-3049ab491cbf"
+      }
+    },
+    "owner": "kendibo"
   }
 }

@@ -40,8 +40,9 @@ export default function ProviderDashboardScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
 
-  const handleLogout = () => {
-    router.replace('/login');
+  const handleLogout = async () => {
+    await useAuthStore.getState().logout();
+    router.replace('/(auth)/login');
   };
 
   return (

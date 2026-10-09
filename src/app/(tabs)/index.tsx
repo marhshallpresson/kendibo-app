@@ -35,7 +35,7 @@ import {
   tileTints,
   tileTintIcons,
 } from '../../constants/theme';
-import { useCategories, useServices } from '../../services/queryClient';
+import { useCategories, useServices, useApprovedProviders } from '../../services/queryClient';
 import { useAuthStore, useLocationStore, useBookmarkStore } from '../../stores';
 import { formatKoboToNaira } from '../../utils/currency';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
@@ -66,6 +66,8 @@ export default function HomeFeedScreen() {
   } = useServices(
     selectedCategoryFilter === 'all' ? undefined : selectedCategoryFilter,
   );
+
+  const { data: approvedProviders = [] } = useApprovedProviders();
 
   const onRefresh = async () => {
     await Promise.all([refetchCategories(), refetchServices()]);
@@ -239,6 +241,47 @@ export default function HomeFeedScreen() {
           </View>
         )}
       </View>
+
+      {/* 4. Providers in your area — KYC-verified providers only; the section stays empty until real providers exist */}
+      {approvedProviders.length > 0 && (
+        <View style={styles.sectionWrap}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+              Providers in Your Area
+            </Text>
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.providersRow}
+          >
+            {approvedProviders.map((provider) => (
+              <View
+                key={provider.id}
+                style={[styles.providerCard, { backgroundColor: colors.surface }]}
+              >
+                <View style={[styles.providerAvatar, { backgroundColor: colors.primaryLight }]}>
+                  <Text style={[styles.providerInitial, { color: colors.primary }]}>
+                    {provider.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <Text
+                  style={[styles.providerCardName, { color: colors.textPrimary }]}
+                  numberOfLines={1}
+                >
+                  {provider.name}
+                </Text>
+                <View style={styles.providerRatingRow}>
+                  <Star size={13} color={colors.warning} fill={colors.warning} />
+                  <Text style={[styles.providerRating, { color: colors.textPrimary }]}>
+                    {provider.rating > 0 ? provider.rating.toFixed(1) : 'New'}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      )}
 
       {/* 5. Most Popular Services */}
       <View style={styles.sectionWrap}>
@@ -537,6 +580,46 @@ const styles = StyleSheet.create({
   },
   servicesLoadingWrap: {
     marginTop: spacing.sm,
+  },
+  providersRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  providerCard: {
+    width: 120,
+    alignItems: 'center',
+    padding: spacing.md,
+    borderRadius: radii.lg,
+    gap: spacing.xs,
+    ...shadows.sm,
+  },
+  providerAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  providerInitial: {
+    fontSize: 20,
+    fontFamily: fonts.display,
+  },
+  providerCardName: {
+    fontSize: 13,
+    fontFamily: fonts.semiBold,
+    textAlign: 'center',
+    maxWidth: '100%',
+  },
+  providerRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  providerRating: {
+    fontSize: 12,
+    fontFamily: fonts.semiBold,
   },
   servicesList: {
     gap: spacing.md,

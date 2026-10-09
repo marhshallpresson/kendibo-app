@@ -19,6 +19,7 @@ interface KYCState {
   };
   payout: {
     bankName: string;
+    bankCode: string;
     accountNumber: string;
     accountName: string;
   };
@@ -46,6 +47,7 @@ const initialState = {
   },
   payout: {
     bankName: '',
+    bankCode: '',
     accountNumber: '',
     accountName: '',
   },

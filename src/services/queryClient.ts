@@ -384,6 +384,35 @@ export function useServices(categoryId?: string) {
   });
 }
 
+export interface ApprovedProvider {
+  id: string;
+  name: string;
+  rating: number;
+  lat?: number | null;
+  lng?: number | null;
+}
+
+/** KYC-verified, active providers — the home "providers in your area" strip. Empty until real providers exist. */
+export function useApprovedProviders() {
+  return useQuery({
+    queryKey: ['approved-providers'],
+    queryFn: async () => {
+      const data = await apiFetch<unknown>('/v1/providers/approved');
+      const list = Array.isArray(data) ? data : unwrapList<unknown>(data);
+      return list.map((raw) => {
+        const r = (raw ?? {}) as Record<string, unknown>;
+        return {
+          id: String(r.id ?? ''),
+          name: String(r.name ?? 'Provider'),
+          rating: Number(r.rating ?? 5),
+          lat: (r.lat as number | null) ?? null,
+          lng: (r.lng as number | null) ?? null,
+        } satisfies ApprovedProvider;
+      });
+    },
+  });
+}
+
 export function useService(serviceId: string) {
   return useQuery({
     queryKey: ['service', serviceId],

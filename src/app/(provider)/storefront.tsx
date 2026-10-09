@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -33,6 +33,13 @@ export default function StorefrontScreen() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['provider-profile'] });
       qc.invalidateQueries({ queryKey: ['provider-id'] });
+    },
+  });
+
+  const onlineMutation = useMutation({
+    mutationFn: (online: boolean) => jobApi.setOnline(online),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['provider-profile'] });
     },
   });
 
@@ -93,8 +100,30 @@ export default function StorefrontScreen() {
           <View style={styles.badgeRow}>
             <Badge label={kyc.label} variant={kyc.variant} />
             <Badge
-              label={profile.online ? 'Online' : 'Offline'}
+              label={onlineMutation.isPending ? 'Updating…' : profile.online ? 'Online' : 'Offline'}
               variant={profile.online ? 'success' : 'neutral'}
+            />
+          </View>
+          {/* Online/offline switch — only meaningful once KYC-verified */}
+          <View style={styles.onlineRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.onlineLabel, { color: colors.textPrimary }]}>
+                Accept new jobs
+              </Text>
+              <Text style={[styles.note, { color: colors.textSecondary }]}>
+                {kycVerified
+                  ? profile.online
+                    ? 'Customers can book you right now.'
+                    : 'Turn on to appear in dispatch.'
+                  : 'Available after KYC verification.'}
+              </Text>
+            </View>
+            <Switch
+              value={profile.online}
+              disabled={!kycVerified || onlineMutation.isPending}
+              onValueChange={(v) => onlineMutation.mutate(v)}
+              trackColor={{ true: colors.primary, false: colors.border }}
+              thumbColor="#fff"
             />
           </View>
           {hasRating && (
@@ -161,6 +190,16 @@ const styles = StyleSheet.create({
   },
   name: { fontFamily: fonts.bold, fontSize: 22, marginBottom: spacing.sm },
   badgeRow: { flexDirection: 'row', gap: spacing.sm },
+  onlineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(0,0,0,0.08)',
+  },
+  onlineLabel: { fontFamily: fonts.semiBold, fontSize: 15, marginBottom: 2 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: spacing.md },
   ratingText: { fontFamily: fonts.semiBold, fontSize: 14 },
   sectionTitle: { fontFamily: fonts.bold, fontSize: 18, marginBottom: spacing.md },

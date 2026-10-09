@@ -244,4 +244,27 @@ export const jobApi = {
       method: 'POST',
       body: { to: toStatus },
     }),
+  /** Go online/offline for dispatch (session-scoped — no providerId needed). */
+  setOnline: async (online: boolean, lat?: number, lng?: number): Promise<{ online: boolean }> =>
+    apiFetch('/v1/provider/online', {
+      method: 'POST',
+      body: { online, lat, lng },
+    }),
+};
+
+export interface BankOption {
+  name: string;
+  code: string;
+}
+
+export const payoutApi = {
+  /** Bachs bank reference list (cached server-side for 24h). */
+  getBanks: (): Promise<BankOption[]> =>
+    apiFetch<BankOption[]>('/v1/banks'),
+  /** Resolve an account number against a bank to get the account holder name. */
+  resolveAccount: (accountNumber: string, bankCode: string): Promise<{ accountName: string }> =>
+    apiFetch('/v1/payouts/resolve-account', {
+      method: 'POST',
+      body: { accountNumber, bankCode },
+    }),
 };

@@ -192,6 +192,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       const mapped = mapServerUser(saved, (saved as User)?.email || (saved as User)?.phone || (get().user?.email || get().user?.phone || ''), (saved as User)?.name);
       const merged = { ...(get().user ?? {}), ...mapped } as User;
+      // mapServerUser always emits a role key (possibly undefined) — never let
+      // a PATCH response without role wipe a provider back to customer.
+      if (!merged.role && get().user?.role) merged.role = get().user!.role;
       set({ user: merged });
       storageSet(USER_KEY, JSON.stringify(merged));
       return merged;
@@ -239,6 +242,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       if (!data?.access || !data?.user) throw new Error('Invalid verification response.');
       const user = mapServerUser(data.user, id, name?.trim());
+      // The backend persists role at verify, but never let a missing echo drop
+      // a freshly-registered provider into the customer tabs.
+      if (!user.role && role) {
+        const r = String(role).toLowerCase();
+        if (r === 'provider' || r === 'customer') user.role = r as User['role'];
+      }
       await persistSession(data.access, data.refresh ?? '', user);
       set({
         user,

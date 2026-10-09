@@ -1,12 +1,22 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { LayoutDashboard, Calendar, Store, CircleDollarSign } from 'lucide-react-native';
 import { useAppTheme } from '../_layout';
 
 import { GeofenceGuard } from '@/components/GeofenceGuard';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function ProviderLayout() {
   const { colors } = useAppTheme();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const role = useAuthStore((s) => s.user?.role);
+
+  // Route guard: only provider accounts live in this group. Customers (and
+  // logged-out deep links) bounce back to their own stack.
+  if (hydrated && (!isAuthenticated || role?.toLowerCase() !== 'provider')) {
+    return <Redirect href={isAuthenticated ? '/(tabs)' : '/(auth)/splash'} />;
+  }
 
   return (
     <GeofenceGuard>

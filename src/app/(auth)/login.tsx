@@ -156,7 +156,7 @@ export default function LoginScreen() {
       if (pin == null) {
         router.replace('/(auth)/biometrics');
       } else {
-        router.replace((role === 'provider' ? '/(provider)' : '/(tabs)') as any);
+        router.replace((role?.toLowerCase() === 'provider' ? '/(provider)' : '/(tabs)') as any);
       }
     } catch (err: any) {
       setErrorMessage(err?.message || 'Google sign-in failed. Try again.');

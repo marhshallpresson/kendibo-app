@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { View, StyleSheet, Platform } from 'react-native';
 import {
   Home,
@@ -12,9 +12,18 @@ import { useAppTheme } from '../_layout';
 import { fonts } from '../../constants/theme';
 
 import { GeofenceGuard } from '@/components/GeofenceGuard';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function TabLayout() {
   const { colors, isDark } = useAppTheme();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const role = useAuthStore((s) => s.user?.role);
+
+  // Route guard: providers deep-linking into customer tabs return home.
+  if (hydrated && isAuthenticated && role?.toLowerCase() === 'provider') {
+    return <Redirect href="/(provider)" />;
+  }
 
   return (
     <GeofenceGuard>

@@ -94,7 +94,7 @@ export default function SplashScreen() {
       // Waits for hydrate(): route off the restored session, never on stale
       // boot state (that was the "reload → onboarding" bug).
       if (isAuthenticated) {
-        router.replace((user?.role === 'provider' ? '/(provider)' : '/(tabs)') as any);
+        router.replace((user?.role?.toLowerCase() === 'provider' ? '/(provider)' : '/(tabs)') as any);
       } else if (hasCompletedOnboarding) {
         router.replace('/(auth)/login');
       } else {
