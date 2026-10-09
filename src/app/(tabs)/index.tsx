@@ -384,7 +384,7 @@ export default function HomeFeedScreen() {
           </View>
         )}
       </View>
-      <View style={{ height: 40 }} />
+      <View style={{ height: 112 }} />
       </ScrollView>
       <FloatingBookButton />
     </View>

@@ -1,15 +1,87 @@
-import React, { useState } from 'react';
-import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Animated,
+  Easing,
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { router } from 'expo-router';
 import { useAppTheme } from '../../constants/ThemeContext';
 import { fonts, radii, shadows, spacing } from '../../constants/theme';
 
 const appIcon = require('../../../assets/logo-dark.png');
 
+const BUTTON_SIZE = 68;
+const LABEL_WIDTH = 168;
+const BOB_DISTANCE = 8;
+const BOB_DURATION = 650;
+
+// The native driver logs a warning on web, so only use it on native.
+const useNativeDriver = Platform.OS !== 'web';
+
+const ease = Easing.inOut(Easing.quad);
+
 export function FloatingBookButton() {
   const { colors } = useAppTheme();
   const [expanded, setExpanded] = useState(false);
   const [anim] = useState(() => new Animated.Value(0));
+  const [bob] = useState(() => new Animated.Value(0));
+  const [pulse] = useState(() => new Animated.Value(1));
+
+  useEffect(() => {
+    // Parked while expanded: the cleanup below has already stopped and
+    // reset the values, so the tap target sits still once it opens.
+    if (expanded) {
+      return;
+    }
+
+    const bounce = Animated.loop(
+      Animated.sequence([
+        Animated.timing(bob, {
+          toValue: -BOB_DISTANCE,
+          duration: BOB_DURATION,
+          easing: ease,
+          useNativeDriver,
+        }),
+        Animated.timing(bob, {
+          toValue: 0,
+          duration: BOB_DURATION,
+          easing: ease,
+          useNativeDriver,
+        }),
+      ]),
+    );
+    const breathe = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1.05,
+          duration: BOB_DURATION,
+          easing: ease,
+          useNativeDriver,
+        }),
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: BOB_DURATION,
+          easing: ease,
+          useNativeDriver,
+        }),
+      ]),
+    );
+
+    bounce.start();
+    breathe.start();
+
+    return () => {
+      bounce.stop();
+      breathe.stop();
+      bob.setValue(0);
+      pulse.setValue(1);
+    };
+  }, [expanded, bob, pulse]);
 
   const expand = () => {
     setExpanded(true);
@@ -39,7 +111,7 @@ export function FloatingBookButton() {
 
   const labelWidth = anim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 156],
+    outputRange: [0, LABEL_WIDTH],
   });
   const labelOpacity = anim.interpolate({
     inputRange: [0, 0.4, 1],
@@ -47,11 +119,20 @@ export function FloatingBookButton() {
   });
 
   return (
-    <View style={styles.wrap} pointerEvents="box-none">
+    <Animated.View
+      style={[
+        styles.wrap,
+        { transform: [{ translateY: bob }, { scale: pulse }] },
+      ]}
+      pointerEvents="box-none"
+    >
       <Pressable
         onPress={handlePress}
         accessibilityRole="button"
         accessibilityLabel="Book a service"
+        accessibilityHint={
+          expanded ? 'Confirms and opens the booking flow' : 'Expands to show booking'
+        }
         accessibilityState={{ expanded }}
         style={({ pressed }) => [
           styles.bar,
@@ -70,7 +151,7 @@ export function FloatingBookButton() {
           </Text>
         </Animated.View>
       </Pressable>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -79,37 +160,37 @@ export default FloatingBookButton;
 const styles = StyleSheet.create({
   wrap: {
     position: 'absolute',
-    left: spacing.md,
+    right: spacing.md,
     bottom: 96,
     zIndex: 20,
   },
   bar: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 56,
+    height: BUTTON_SIZE,
     borderRadius: radii.full,
     overflow: 'hidden',
     ...shadows.lg,
   },
   circle: {
-    width: 56,
-    height: 56,
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },
   icon: {
-    width: 34,
-    height: 34,
+    width: 40,
+    height: 40,
   },
   labelWrap: {
-    height: 56,
+    height: BUTTON_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
   },
   label: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: fonts.semiBold,
     paddingHorizontal: spacing.md,
   },
