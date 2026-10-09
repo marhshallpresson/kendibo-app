@@ -40,6 +40,7 @@ import { useAuthStore, useLocationStore, useBookmarkStore } from '../../stores';
 import { formatKoboToNaira } from '../../utils/currency';
 import { LoadingSkeleton } from '../../components/ui/LoadingSkeleton';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { FloatingBookButton } from '../../components/ui/FloatingBookButton';
 import { Service } from '../../types';
 
 export default function HomeFeedScreen() {
@@ -101,14 +102,15 @@ export default function HomeFeedScreen() {
     : 'Add a service address to get started';
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={styles.contentContainer}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={colors.primary} />
-      }
-    >
+    <View style={{ flex: 1 }}>
+      <ScrollView
+        style={[styles.container, { backgroundColor: colors.background }]}
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={colors.primary} />
+        }
+      >
       {/* 1. Greeting header: avatar + name, bell + bookmark */}
       <View style={styles.topHeader}>
         <View style={styles.userRow}>
@@ -317,8 +319,11 @@ export default function HomeFeedScreen() {
           <View style={styles.servicesList}>
             {filteredServices.slice(0, 8).map((service: Service) => {
               const isBookmarked = bookmarkedIds.includes(service.id);
-              const providerLine =
-                categories.find((c) => c.id === service.categoryId)?.name || 'Verified Pro';
+              const categoryName = categories.find(
+                (c) => c.id === service.categoryId,
+              )?.name;
+              const providerLine = categoryName || service.providerName || '';
+              const hasReviews = service.reviewCount > 0 || service.rating > 0;
               return (
                 <Pressable
                   key={service.id}
@@ -328,12 +333,14 @@ export default function HomeFeedScreen() {
                   <Image source={resolveImage(service.imageUrl)} style={styles.serviceImage} />
 
                   <View style={styles.serviceDetails}>
-                    <Text
-                      style={[styles.providerName, { color: colors.textSecondary }]}
-                      numberOfLines={1}
-                    >
-                      {providerLine}
-                    </Text>
+                    {!!providerLine && (
+                      <Text
+                        style={[styles.providerName, { color: colors.textSecondary }]}
+                        numberOfLines={1}
+                      >
+                        {providerLine}
+                      </Text>
+                    )}
                     <Text
                       style={[styles.serviceName, { color: colors.textPrimary }]}
                       numberOfLines={1}
@@ -342,18 +349,20 @@ export default function HomeFeedScreen() {
                     </Text>
                     <Text style={[styles.priceTag, { color: colors.primary }]}>
                       {service.isQuoteBased
-                        ? 'Inspection fee ₦3,000'
+                        ? 'Inspection fee on quote'
                         : formatKoboToNaira(service.priceKobo)}
                     </Text>
-                    <View style={styles.ratingRow}>
-                      <Star size={14} color={colors.warning} fill={colors.warning} />
-                      <Text style={[styles.ratingScore, { color: colors.textPrimary }]}>
-                        {service.rating}
-                      </Text>
-                      <Text style={[styles.reviewCount, { color: colors.textMuted }]}>
-                        | {service.reviewCount} reviews
-                      </Text>
-                    </View>
+                    {hasReviews && (
+                      <View style={styles.ratingRow}>
+                        <Star size={14} color={colors.warning} fill={colors.warning} />
+                        <Text style={[styles.ratingScore, { color: colors.textPrimary }]}>
+                          {service.rating}
+                        </Text>
+                        <Text style={[styles.reviewCount, { color: colors.textMuted }]}>
+                          | {service.reviewCount} reviews
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   <Pressable
@@ -375,9 +384,10 @@ export default function HomeFeedScreen() {
           </View>
         )}
       </View>
-
       <View style={{ height: 40 }} />
-    </ScrollView>
+      </ScrollView>
+      <FloatingBookButton />
+    </View>
   );
 }
 

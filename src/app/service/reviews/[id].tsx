@@ -11,7 +11,7 @@ import { Input } from '../../../components/ui/Input';
 
 const STAR_AMBER = '#FFB800';
 
-interface MockReviewItem {
+interface ReviewItem {
   id: string;
   userName: string;
   avatarUrl?: string;
@@ -27,9 +27,9 @@ export default function ServiceReviewsScreen() {
   const { colors } = useAppTheme();
 
   const [selectedRatingFilter, setSelectedRatingFilter] = useState<number | 'all'>('all');
-  // Live backend has no public GET reviews endpoint — start empty and show
-  // an EmptyState until the user writes one (no hardcoded fixtures).
-  const [reviewsList, setReviewsList] = useState<MockReviewItem[]>([]);
+  // No public GET reviews endpoint yet — reviews come only from user
+  // submissions made on this screen (no hardcoded fixtures).
+  const [reviewsList, setReviewsList] = useState<ReviewItem[]>([]);
   const [likedReviewIds, setLikedReviewIds] = useState<Set<string>>(new Set());
   const [isWriteModalOpen, setIsWriteModalOpen] = useState(false);
   const [newRating, setNewRating] = useState(5);
@@ -49,7 +49,7 @@ export default function ServiceReviewsScreen() {
 
   const handleAddReview = () => {
     if (!newComment.trim()) return;
-    const newRev: MockReviewItem = {
+    const newRev: ReviewItem = {
       id: `rev-${Date.now()}`,
       userName: newReviewerName.trim() || 'Verified Customer',
       rating: newRating,

@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import {
   ArrowLeft,
   Phone,
@@ -20,7 +21,6 @@ import {
   Mic,
   CheckCheck,
   ShieldCheck,
-  Image as ImageIcon,
   ChevronRight,
   X,
 } from 'lucide-react-native';
@@ -86,18 +86,25 @@ export default function ChatDetailScreen() {
 
   const handleSendMessage = (textToSend?: string) => {
     const content = (textToSend || inputText).trim();
-    if (!content || !jobId) return;
+    if ((!content && !attachedImage) || !jobId) return;
+    const body = attachedImage ? (content ? `${content} ${attachedImage}` : attachedImage) : content;
     sendMessage.mutate({
       jobId,
       from: user?.id || 'customer',
-      body: content,
+      body,
     });
     setInputText('');
     setAttachedImage(null);
   };
 
-  const handleAttachMockImage = () => {
-    setAttachedImage('reviewPhoto');
+  const handleAttachImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setAttachedImage(result.assets[0].uri);
+    }
   };
 
   return (
@@ -264,7 +271,7 @@ export default function ChatDetailScreen() {
       {/* Bottom Message Input Bar */}
       <View style={styles.inputBar}>
         <Pressable
-          onPress={handleAttachMockImage}
+          onPress={handleAttachImage}
           style={styles.attachButton}
           accessibilityRole="button"
           accessibilityLabel="Attach photo"

@@ -23,6 +23,7 @@ import {
   Check,
   Copy,
   UserRound,
+  CalendarCheck,
 } from 'lucide-react-native';
 import { useAppTheme } from '../_layout';
 import { spacing, radii, fonts } from '../../constants/theme';
@@ -32,9 +33,8 @@ import { useAuthStore } from '../../stores';
 
 export default function SettingsIndexScreen() {
   const router = useRouter();
-  const { colors } = useAppTheme();
+  const { colors, isDark, toggleTheme } = useAppTheme();
 
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English (US)');
 
   const [showLanguageModal, setShowLanguageModal] = useState(false);
@@ -91,6 +91,11 @@ export default function SettingsIndexScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.menuList}>
           {renderRow({
+            icon: <CalendarCheck size={22} color={colors.textPrimary} />,
+            label: 'Booking History',
+            onPress: () => router.push('/bookings'),
+          })}
+          {renderRow({
             icon: <UserRound size={22} color={colors.textPrimary} />,
             label: 'Edit profile',
             onPress: () => router.push('/settings/edit-profile'),
@@ -123,13 +128,13 @@ export default function SettingsIndexScreen() {
             label: 'Dark Mode',
             right: (
               <Switch
-                value={isDarkMode}
-                onValueChange={setIsDarkMode}
+                value={isDark}
+                onValueChange={toggleTheme}
                 trackColor={{ false: colors.border, true: colors.primary }}
                 thumbColor="#FFFFFF"
               />
             ),
-            onPress: () => setIsDarkMode((v) => !v),
+            onPress: toggleTheme,
           })}
           {renderRow({
             icon: <FileText size={22} color={colors.textPrimary} />,

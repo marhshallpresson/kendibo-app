@@ -106,7 +106,7 @@ function mapServerAddOn(raw: unknown, serviceId: string, index = 0): ServiceAddO
 export function mapServerService(raw: unknown): Service {
   const r = raw as Record<string, unknown>;
   const id = String(r?.id ?? '');
-  const category = String(r?.category ?? r?.categoryId ?? r?.categorySlug ?? '');
+  const category = String(r?.category ?? r?.categoryId ?? r?.categorySlug ?? r?.category_id ?? '');
   const name = String(r?.title ?? r?.name ?? 'Service');
   const imageUrl = String(r?.imageUrl ?? r?.image_url ?? '');
   // Server lacks gallery/provider fields — derive per contract.
@@ -844,10 +844,8 @@ export function useDeleteAddress() {
   });
 }
 
-// NOTE: backend main.ts currently exposes NO /v1/wallet routes.
-// Hooks below implement the documented contract ({data:{balanceKobo, txns}})
-// so the app is ready the moment the routes land; until then calls 404 and
-// screens surface an explicit "wallet unavailable" EmptyState (no mock data).
+// Live wallet routes: GET /v1/wallet and POST /v1/wallet/topup return
+// {balanceKobo, txns}; these hooks read that contract directly.
 export function useWallet() {
   return useQuery({
     queryKey: ['wallet'],

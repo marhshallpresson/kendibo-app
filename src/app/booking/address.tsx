@@ -167,9 +167,9 @@ export default function BookingAddressScreen() {
           gateInstructions,
           contactPhone,
           isDefault,
-          city: 'Uyo',
-          state: 'Akwa Ibom',
-          coordinates: { latitude: 5.0377, longitude: 7.9128 },
+          city: currentAddress?.city || undefined,
+          state: currentAddress?.state || undefined,
+          coordinates: currentAddress?.coordinates || { latitude: 0, longitude: 0 },
         });
 
         setSelectedAddressId(newAddress.id);

@@ -10,6 +10,7 @@ import {
   Switch,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import {
   Star,
   Camera,
@@ -78,9 +79,7 @@ export default function ReviewScreen() {
   ]);
   const [feedbackNotes, setFeedbackNotes] = useState<string>('');
   const [selectedTipKobo, setSelectedTipKobo] = useState<number>(0);
-  const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([
-    'cleaningHero',
-  ]);
+  const [uploadedPhotos, setUploadedPhotos] = useState<string[]>([]);
 
   // 14-Day Warranty claim toggle
   const [isFilingWarranty, setIsFilingWarranty] = useState<boolean>(false);
@@ -122,11 +121,14 @@ export default function ReviewScreen() {
     );
   };
 
-  const handleAddMockPhoto = () => {
-    setUploadedPhotos((prev) => [
-      ...prev,
-      'reviewPhoto',
-    ]);
+  const handleAddPhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setUploadedPhotos((prev) => [...prev, result.assets[0].uri]);
+    }
   };
 
   const handleRemovePhoto = (index: number) => {
@@ -252,7 +254,7 @@ export default function ReviewScreen() {
 
           {uploadedPhotos.length < 4 && (
             <Pressable
-              onPress={handleAddMockPhoto}
+              onPress={handleAddPhoto}
               style={styles.addPhotoButton}
               accessibilityRole="button"
               accessibilityLabel="Add photo"

@@ -4,7 +4,7 @@ import { storageGet, storageSet } from '../storage';
 /** SecureStore keys for the live session (Bearer access + rotation refresh). */
 export const ACCESS_KEY = 'kendibo_access';
 export const REFRESH_KEY = 'kendibo_refresh';
-/** Legacy key (mock era) — kept for import compat, no longer written. */
+/** Legacy pre-live-backend session key — exported only for import compatibility; never read or written by the live flow. */
 export const SESSION_STORAGE_KEY = 'kendibo_session';
 
 /** Structured error for all live backend failures. */

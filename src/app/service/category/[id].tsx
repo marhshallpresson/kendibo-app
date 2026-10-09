@@ -178,7 +178,7 @@ export default function CategoryScreen() {
                   style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}
                   onPress={() => router.push(`/service/${service.id}`)}
                 >
-                  {/* Tinted thumb behind Unsplash photo (mockup 38: rounded square left) */}
+                  {/* Tinted thumb behind the real service image (mockup 38: rounded square left) */}
                   <View style={[styles.thumbWrap, { backgroundColor: tint }]}>
                     <Image source={resolveImage(service.imageUrl)} style={styles.thumb} />
                   </View>

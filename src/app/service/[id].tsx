@@ -15,7 +15,6 @@ import {
   Minus,
   ChevronRight,
   MapPin,
-  Heart,
 } from 'lucide-react-native';
 import { useAppTheme } from '../_layout';
 import { spacing, radii, shadows, fonts } from '../../constants/theme';
@@ -37,8 +36,6 @@ export default function ServiceDetailScreen() {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [selectedAddonQuantities, setSelectedAddonQuantities] = useState<Record<string, number>>({});
   const [aboutExpanded, setAboutExpanded] = useState(false);
-  // Inline reviews preview (mockup 45 bottom half) — local likes only, logic preserved
-  const [likedPreview, setLikedPreview] = useState<Set<string>>(new Set());
 
   const { data: service, isLoading } = useService(id || '');
   const currentAddress = useLocationStore((state) => state.currentAddress);
@@ -86,15 +83,6 @@ export default function ServiceDetailScreen() {
     router.push('/booking/schedule');
   };
 
-  const togglePreviewLike = (rid: string) => {
-    setLikedPreview((prev) => {
-      const next = new Set(prev);
-      if (next.has(rid)) next.delete(rid);
-      else next.add(rid);
-      return next;
-    });
-  };
-
   if (isLoading || !service) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background, padding: spacing.md }]}>
@@ -112,10 +100,7 @@ export default function ServiceDetailScreen() {
   const aboutText = service.description;
   const aboutShort = aboutText.length > 140 && !aboutExpanded ? `${aboutText.slice(0, 140)}...` : aboutText;
   const gallery = [service.imageUrl, service.imageUrl, service.imageUrl, service.imageUrl];
-  const previewReviews = [
-    { id: 'pr1', name: 'Lauralee Quintero', rating: 5, text: 'Awesome! This is what I was looking for, I recommend to everyone.', likes: 724, date: '3 weeks ago' },
-    { id: 'pr2', name: 'Clinton Mcclure', rating: 4, text: 'The workers are very professional and the results are very satisfying! I like it very much.', likes: 783, date: '1 week ago' },
-  ];
+
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -174,9 +159,11 @@ export default function ServiceDetailScreen() {
             </Pressable>
           </View>
           <View style={styles.providerRow}>
-            <Text style={[styles.providerName, { color: colors.primary, fontFamily: fonts.bold }]}>
-              {service.tagline ? service.tagline.split('•')[0].trim() : 'KENDIBO Verified Pro'}
-            </Text>
+            {service.tagline || service.providerName ? (
+              <Text style={[styles.providerName, { color: colors.primary, fontFamily: fonts.bold }]}>
+                {service.tagline ? service.tagline.split('•')[0].trim() : service.providerName}
+              </Text>
+            ) : null}
             <Star size={14} color={STAR_AMBER} fill={STAR_AMBER} />
             <Text style={[styles.ratingScore, { color: colors.textPrimary, fontFamily: fonts.semiBold }]}>
               {service.rating} ({service.reviewCount} reviews)
@@ -224,38 +211,40 @@ export default function ServiceDetailScreen() {
           </View>
         </View>
 
-        <View style={styles.sectionBlock}>
-          <Text style={[styles.sectionHeading, { color: colors.textPrimary, fontFamily: fonts.bold }]}>What&apos;s Included</Text>
-          <View style={styles.checklist}>
-            {(service.inclusions || [
-              'Complete inspection of work area',
-              'Industrial-grade equipment and materials included',
-              'Final cleanup and debris disposal',
-            ]).map((inc, i) => (
-              <View key={i} style={styles.checkItem}>
-                <View style={[styles.checkCircle, { backgroundColor: colors.badgeGreenBg }]}>
-                  <Check size={13} color={colors.success} />
-                </View>
-                <Text style={[styles.checkText, { color: colors.textPrimary, fontFamily: fonts.regular }]}>{inc}</Text>
-              </View>
-            ))}
-          </View>
-          {service.exclusions && service.exclusions.length > 0 && (
-            <View style={{ marginTop: spacing.md }}>
-              <Text style={[styles.subHeading, { color: colors.textPrimary, fontFamily: fonts.bold }]}>What&apos;s Not Included</Text>
-              <View style={styles.checklist}>
-                {service.exclusions.map((exc, i) => (
-                  <View key={i} style={styles.checkItem}>
-                    <View style={[styles.checkCircle, { backgroundColor: colors.badgeRedBg }]}>
-                      <X size={13} color={colors.error} />
+        {((service.inclusions && service.inclusions.length > 0) || (service.exclusions && service.exclusions.length > 0)) && (
+          <View style={styles.sectionBlock}>
+            {service.inclusions && service.inclusions.length > 0 && (
+              <>
+                <Text style={[styles.sectionHeading, { color: colors.textPrimary, fontFamily: fonts.bold }]}>What&apos;s Included</Text>
+                <View style={styles.checklist}>
+                  {service.inclusions.map((inc, i) => (
+                    <View key={i} style={styles.checkItem}>
+                      <View style={[styles.checkCircle, { backgroundColor: colors.badgeGreenBg }]}>
+                        <Check size={13} color={colors.success} />
+                      </View>
+                      <Text style={[styles.checkText, { color: colors.textPrimary, fontFamily: fonts.regular }]}>{inc}</Text>
                     </View>
-                    <Text style={[styles.checkText, { color: colors.textSecondary, fontFamily: fonts.regular }]}>{exc}</Text>
-                  </View>
-                ))}
+                  ))}
+                </View>
+              </>
+            )}
+            {service.exclusions && service.exclusions.length > 0 && (
+              <View style={{ marginTop: spacing.md }}>
+                <Text style={[styles.subHeading, { color: colors.textPrimary, fontFamily: fonts.bold }]}>What&apos;s Not Included</Text>
+                <View style={styles.checklist}>
+                  {service.exclusions.map((exc, i) => (
+                    <View key={i} style={styles.checkItem}>
+                      <View style={[styles.checkCircle, { backgroundColor: colors.badgeRedBg }]}>
+                        <X size={13} color={colors.error} />
+                      </View>
+                      <Text style={[styles.checkText, { color: colors.textSecondary, fontFamily: fonts.regular }]}>{exc}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
-          )}
-        </View>
+            )}
+          </View>
+        )}
 
         {service.addOns && service.addOns.length > 0 && (
           <View style={styles.sectionBlock}>
@@ -314,35 +303,6 @@ export default function ServiceDetailScreen() {
             <Text style={[styles.seeAll, { color: colors.primary, fontFamily: fonts.bold }]}>See All</Text>
             <ChevronRight size={14} color={colors.primary} />
           </Pressable>
-          <View style={styles.previewList}>
-            {previewReviews.map((rev) => {
-              const liked = likedPreview.has(rev.id);
-              return (
-                <View key={rev.id} style={styles.previewCard}>
-                  <View style={styles.previewHeader}>
-                    <View style={[styles.previewAvatar, { backgroundColor: colors.primaryLight }]}>
-                      <Text style={[styles.previewInitial, { color: colors.primary, fontFamily: fonts.bold }]}>
-                        {rev.name.charAt(0)}
-                      </Text>
-                    </View>
-                    <Text style={[styles.previewName, { color: colors.textPrimary, fontFamily: fonts.bold }]}>{rev.name}</Text>
-                    <View style={[styles.previewRatingPill, { borderColor: colors.primary }]}>
-                      <Star size={11} color={colors.primary} fill={colors.primary} />
-                      <Text style={[styles.previewRatingText, { color: colors.primary, fontFamily: fonts.bold }]}>{rev.rating}</Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.previewComment, { color: colors.textPrimary, fontFamily: fonts.regular }]}>{rev.text}</Text>
-                  <View style={styles.previewFooter}>
-                    <Pressable style={styles.previewLike} onPress={() => togglePreviewLike(rev.id)}>
-                      <Heart size={15} color={liked ? colors.error : colors.textMuted} fill={liked ? colors.error : 'transparent'} />
-                      <Text style={[styles.previewLikes, { color: colors.textSecondary, fontFamily: fonts.semiBold }]}>{rev.likes + (liked ? 1 : 0)}</Text>
-                    </Pressable>
-                    <Text style={[styles.previewDate, { color: colors.textMuted, fontFamily: fonts.regular }]}>{rev.date}</Text>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
           <Button title="Read All Reviews" variant="outline" size="md" onPress={() => router.push(`/service/reviews/${service.id}`)} />
         </View>
 
@@ -441,27 +401,6 @@ const styles = StyleSheet.create({
   reviewsLink: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: spacing.sm },
   reviewsLinkText: { fontSize: 14 },
   seeAll: { fontSize: 13, marginLeft: 'auto' },
-  previewList: { gap: spacing.md, marginBottom: spacing.md },
-  previewCard: { gap: 6 },
-  previewHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  previewAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  previewInitial: { fontSize: 14 },
-  previewName: { fontSize: 14, flex: 1 },
-  previewRatingPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1.5,
-    borderRadius: radii.full,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-  },
-  previewRatingText: { fontSize: 12 },
-  previewComment: { fontSize: 13, lineHeight: 19 },
-  previewFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  previewLike: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  previewLikes: { fontSize: 12 },
-  previewDate: { fontSize: 11 },
   sectionBlock: { paddingHorizontal: spacing.md, marginBottom: spacing.lg },
   sectionHeaderRow: {
     flexDirection: 'row',

@@ -5,6 +5,7 @@ import { apiFetch } from '@/services/api/client';
 import { Button } from '@/components/ui';
 import { useAppTheme } from '@/app/_layout';
 import { fonts } from '@/constants/theme';
+import { useLocationStore } from '@/stores/locationStore';
 
 type Status = 'checking' | 'ok' | 'unsupported' | 'error';
 type Coverage = { cityId: string; city: string; lat: number; lng: number; radiusKm: number; zones: { zone: string; lat: number; lng: number; radiusKm: number }[] };
@@ -26,7 +27,30 @@ export function GeofenceGuard({ children }: { children: React.ReactNode }) {
     const res = await apiFetch<{ data: { serviceable: boolean; city?: string } }>(
       `/v1/geo/zones/check?lat=${lat}&lng=${lng}`,
     );
-    setStatus(res.data?.serviceable ? 'ok' : 'unsupported');
+    const serviceable = res.data?.serviceable ?? false;
+    setStatus(serviceable ? 'ok' : 'unsupported');
+    if (serviceable) {
+      try {
+        const reverse = await apiFetch<{ area?: string; city?: string }>(
+          `/v1/geo/reverse-geocode?lat=${lat}&lng=${lng}`,
+        );
+        if (reverse && (reverse.area || reverse.city)) {
+          const current = useLocationStore.getState().currentAddress;
+          if (current == null) {
+            useLocationStore.getState().setAddress({
+              id: 'gps',
+              street: reverse.area ?? '',
+              city: reverse.city || undefined,
+              state: undefined,
+              coordinates: { latitude: lat, longitude: lng },
+            } as any);
+          }
+        }
+      } catch (e) {
+        // ignore reverse-geocode failures
+        console.error(e);
+      }
+    }
   }, []);
 
   const checkLocation = useCallback(async () => {

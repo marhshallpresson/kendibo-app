@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   Pressable,
-  Switch,
   Alert,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -14,12 +13,6 @@ import {
   Bell,
   CreditCard,
   ShieldCheck,
-  Globe,
-  Eye,
-  FileText,
-  HelpCircle,
-  Users,
-  LogOut,
   ChevronRight,
   MoreHorizontal,
   Pencil,
@@ -27,25 +20,14 @@ import {
 import { useAppTheme } from '../_layout';
 import { spacing, fonts } from '../../constants/theme';
 import { useAuthStore } from '../../stores';
-import { Modal } from '../../components/ui/Modal';
-import { Button } from '../../components/ui/Button';
 
 export default function ProfileScreen() {
-  const { colors, isDark, toggleTheme } = useAppTheme();
+  const { colors } = useAppTheme();
   const user = useAuthStore((state) => state.user);
   const isBiometricEnabled = useAuthStore((state) => state.isBiometricEnabled);
-  const logout = useAuthStore((state) => state.logout);
-
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   const userName = user?.name || 'Hi there, Welcome';
   const userEmail = user?.email || 'Sign in';
-
-  const handleConfirmLogout = () => {
-    setIsLogoutModalOpen(false);
-    logout();
-    router.replace('/(auth)/login');
-  };
 
   const renderRow = ({
     icon,
@@ -76,7 +58,14 @@ export default function ProfileScreen() {
       {/* Header */}
       <View style={styles.headerBar}>
         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Profile</Text>
-        <MoreHorizontal size={22} color={colors.textPrimary} />
+        <Pressable
+          onPress={() => router.navigate('/settings')}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+        >
+          <MoreHorizontal size={22} color={colors.textPrimary} />
+        </Pressable>
       </View>
 
       <ScrollView
@@ -133,60 +122,6 @@ export default function ProfileScreen() {
             label: 'Security',
             onPress: () => router.push('/settings/security'),
           })}
-          {renderRow({
-            icon: <Globe size={22} color={colors.textPrimary} />,
-            label: 'Language',
-            right: (
-              <View style={styles.valueRight}>
-                <Text style={[styles.valueText, { color: colors.textPrimary }]}>
-                  English (US)
-                </Text>
-                <ChevronRight size={20} color={colors.textPrimary} />
-              </View>
-            ),
-            onPress: () => router.push('/settings'),
-          })}
-          {renderRow({
-            icon: <Eye size={22} color={colors.textPrimary} />,
-            label: 'Dark Mode',
-            right: (
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor="#FFFFFF"
-              />
-            ),
-            onPress: toggleTheme,
-          })}
-          {renderRow({
-            icon: <FileText size={22} color={colors.textPrimary} />,
-            label: 'Privacy Policy',
-            onPress: () =>
-              Alert.alert('Privacy', 'KENDIBO complies with the Nigeria Data Protection Act (NDPA).'),
-          })}
-          {renderRow({
-            icon: <HelpCircle size={22} color={colors.textPrimary} />,
-            label: 'Help Center',
-            onPress: () =>
-              Alert.alert('Help Center', 'KENDIBO Customer Support is available 24/7 at +234 800 KENDIBO'),
-          })}
-          {renderRow({
-            icon: <Users size={22} color={colors.textPrimary} />,
-            label: 'Invite Friends',
-            onPress: () =>
-              Alert.alert(
-                'Referral Program',
-                'Share code EMEKA2000 to earn ₦2,000 when your friend books!'
-              ),
-          })}
-          {renderRow({
-            icon: <LogOut size={22} color={colors.error} />,
-            label: 'Logout',
-            danger: true,
-            right: <View />,
-            onPress: () => setIsLogoutModalOpen(true),
-          })}
         </View>
 
         <Text style={[styles.bioHint, { color: colors.textMuted }]}>
@@ -195,37 +130,6 @@ export default function ProfileScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-
-      {/* Logout confirmation bottom sheet */}
-      <Modal
-        visible={isLogoutModalOpen}
-        onClose={() => setIsLogoutModalOpen(false)}
-        type="bottomSheet"
-        title="Logout"
-      >
-        <View style={styles.modalContentWrap}>
-          <Text style={[styles.modalDesc, { color: colors.textPrimary }]}>
-            Are you sure you want to log out?
-          </Text>
-
-          <View style={styles.modalButtonsRow}>
-            <View style={{ flex: 1, marginRight: spacing.sm }}>
-              <Button
-                title="Cancel"
-                variant="outline"
-                onPress={() => setIsLogoutModalOpen(false)}
-              />
-            </View>
-            <View style={{ flex: 1, marginLeft: spacing.sm }}>
-              <Button
-                title="Yes, Logout"
-                variant="primary"
-                onPress={handleConfirmLogout}
-              />
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -316,31 +220,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: fonts.regular,
   },
-  valueRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  valueText: {
-    fontSize: 14,
-    fontFamily: fonts.regular,
-  },
   bioHint: {
     fontSize: 11,
     fontFamily: fonts.regular,
     textAlign: 'center',
     marginTop: spacing.lg,
-  },
-  modalContentWrap: {
-    paddingVertical: spacing.sm,
-  },
-  modalDesc: {
-    fontSize: 17,
-    fontFamily: fonts.bold,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  modalButtonsRow: {
-    flexDirection: 'row',
   },
 });
