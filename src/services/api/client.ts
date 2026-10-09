@@ -52,7 +52,7 @@ function newIdemKey(prefix = 'm'): string {
  */
 function unreachableError(): TypeError {
   return new TypeError(
-    `Can't reach the KENDIBO API (${API_HOST}). Check your internet connection and try again.`,
+    `]Check your internet connection and try again.`,
   );
 }
 
