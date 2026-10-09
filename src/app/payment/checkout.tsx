@@ -26,9 +26,96 @@ import { useCartStore } from '../../stores/cartStore';
 import { useLocationStore } from '../../stores/locationStore';
 import { useAuthStore } from '../../stores/authStore';
 import { formatKoboToNaira, calculateBookingTotalKobo } from '../../utils/currency';
-import { apiFetch } from '../../services/api/client';
+import { apiFetch, ApiError } from '../../services/api/client';
 
 const newPaymentRef = () => `PAY-KBD-${Date.now().toString(36)}`;
+
+/**
+ * POST /v1/bookings contract (backend main.ts):
+ *   body   = { serviceId, addressId, scheduledAt, urgency?, customerNotes?, addOnIds? }
+ *   price  = server-side pricing engine (quote-mode services throw QUOTE_REQUIRED)
+ *   id     = booking.booking.address_id is a UUID column, so only a PERSISTED
+ *            address may be sent — placeholders such as 'gps' (GeofenceGuard)
+ *            or 'picked' (map pin) are not UUIDs and make Postgres reject the
+ *            insert → 400 BOOKING_ERROR.
+ */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+/** Backend's own placeholder when a customer has no email (see wallet topup). */
+const NO_EMAIL_FALLBACK = 'user@kendibo.com';
+
+const ADDRESS_REQUIRED =
+  'Select a service address before paying — your GPS/map pin is not a saved address yet.';
+
+function receiptEmail(email?: string): string {
+  const value = (email ?? '').trim();
+  return EMAIL_RE.test(value) ? value : NO_EMAIL_FALLBACK;
+}
+
+/**
+ * Build a real ISO timestamp from the schedule step. The old code always sent
+ * `new Date().toISOString()` (booking "now" regardless of what the user chose)
+ * and could send an empty string, which Postgres rejects.
+ */
+function resolveScheduledAt(date?: string, timeSlot?: string): string {
+  const nextSlot = (): string => {
+    const halfHour = 30 * 60 * 1000;
+    return new Date(Math.ceil((Date.now() + 15 * 60 * 1000) / halfHour) * halfHour).toISOString();
+  };
+  const trimmed = (date ?? '').trim();
+  if (!trimmed) return nextSlot();
+  let when = new Date(`${trimmed}T00:00:00`);
+  if (Number.isNaN(when.getTime())) when = new Date(trimmed);
+  if (Number.isNaN(when.getTime())) return nextSlot();
+
+  const m = (timeSlot ?? '').match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+  if (m) {
+    let hour = parseInt(m[1], 10);
+    const minute = parseInt(m[2], 10);
+    const ampm = (m[3] ?? '').toLowerCase();
+    if (ampm === 'pm' && hour < 12) hour += 12;
+    if (ampm === 'am' && hour === 12) hour = 0;
+    when.setHours(hour, minute, 0, 0);
+  } else {
+    when.setHours(10, 0, 0, 0);
+  }
+  // Never book into the past (cart screens ship a hardcoded default date).
+  if (when.getTime() < Date.now() - 60 * 60 * 1000) return nextSlot();
+  return when.toISOString();
+}
+
+/** Turn backend/network failures into something the user can act on. */
+function describeFailure(err: unknown): string {
+  if (err instanceof ApiError) {
+    const hint = `${err.code ?? ''} ${err.message}`.toLowerCase();
+    if (hint.includes('quote_required')) {
+      return 'This service is priced after inspection — request a quote instead of paying upfront.';
+    }
+    if (hint.includes('service_not_found')) {
+      return 'This service is no longer available. Go back and pick another one.';
+    }
+    if (hint.includes('uuid') || hint.includes('address_id') || hint.includes('address')) {
+      return ADDRESS_REQUIRED;
+    }
+    if (err.status === 401) return 'Your session has expired. Please sign in again.';
+    if (err.code === 'BOOKING_ERROR') {
+      const message = err.message.trim();
+      if (message && message.length < 160 && !message.startsWith('{')) {
+        return `We could not create this booking: ${message}`;
+      }
+      return 'We could not create this booking. Check the service address, service and schedule, then try again.';
+    }
+    if (err.status === 400) {
+      return 'The booking was rejected. Check the service address, service and schedule, then try again.';
+    }
+    if (err.status >= 500) return 'KENDIBO is having trouble right now. Please try again in a moment.';
+    return err.message;
+  }
+  // Network failures carry an accurate "can't reach the KENDIBO API (host)"
+  // message from apiFetch — never a telemetry host.
+  if (err instanceof TypeError) return err.message;
+  return 'Payment could not be started. Please try again.';
+}
 
 export default function CheckoutScreen() {
   useWatchupScreen('PaymentCheckout');
@@ -75,17 +162,38 @@ export default function CheckoutScreen() {
 
   const targetServiceId = params.serviceId || displayItems[0]?.service.id || '';
   const targetServiceName = displayItems[0]?.service.name || 'Service';
+  const targetItem = displayItems.find((i) => i.service.id === targetServiceId);
+  const targetAddOnIds = (targetItem?.selectedAddOns ?? [])
+    .map((a) => a.addOn.id)
+    .filter((id) => Boolean(id));
+
+  // One idempotency key per checkout attempt: retrying after a failure
+  // re-uses the SAME booking (backend is UNIQUE(user_id, idempotency_key)),
+  // so a retry can never create duplicate bookings.
+  const [bookingIdemKey] = useState(
+    () => `kbd_${Date.now().toString(36)}${Math.floor(Math.random() * 1e9).toString(36)}`,
+  );
 
   const handlePay = async () => {
-    if (!currentAddress?.id) {
-      Alert.alert('Address Required', 'Select a service address before paying.', [
-        { text: 'Add Address', onPress: () => router.push('/booking/address') },
+    // addressId is a UUID column — a GPS/map-pin placeholder ('gps'/'picked')
+    // or a missing address makes the insert fail with a silent 400.
+    if (!currentAddress?.id || !UUID_RE.test(currentAddress.id)) {
+      setError(ADDRESS_REQUIRED);
+      Alert.alert('Address Required', `${ADDRESS_REQUIRED}\n\nChoose a saved address or add one to continue.`, [
+        { text: 'Select Address', onPress: () => router.push('/booking/address') },
         { text: 'Cancel', style: 'cancel' },
       ]);
       return;
     }
     if (!targetServiceId) {
       Alert.alert('No Service', 'Return to the service page and try again.');
+      return;
+    }
+    if (targetItem?.service.isQuoteBased) {
+      const quoteMessage =
+        'This service is priced after inspection — request a quote instead of paying upfront.';
+      setError(quoteMessage);
+      Alert.alert('Quote required', quoteMessage);
       return;
     }
     if (finalTotalKobo <= 0) {
@@ -100,13 +208,16 @@ export default function CheckoutScreen() {
     setError(null);
     const paymentRef = newPaymentRef();
     try {
-      // 1. Create the real booking.
+      // 1. Create the real booking (server prices it via the pricing engine).
       const booking = await apiFetch<{ id: string; bookingNumber?: string }>('/v1/bookings', {
         method: 'POST',
+        idempotencyKey: bookingIdemKey,
         body: {
           serviceId: targetServiceId,
           addressId: currentAddress.id,
-          scheduledAt: new Date().toISOString(),
+          scheduledAt: resolveScheduledAt(scheduledDate, timeSlot),
+          ...(targetAddOnIds.length > 0 ? { addOnIds: targetAddOnIds } : {}),
+          ...(params.instructions?.trim() ? { customerNotes: params.instructions.trim() } : {}),
         },
       });
 
@@ -115,9 +226,12 @@ export default function CheckoutScreen() {
         `/v1/bookings/${booking.id}/payments`,
         {
           method: 'POST',
+          idempotencyKey: bookingIdemKey,
           body: {
             amountKobo: String(finalTotalKobo),
-            email: user?.email || user?.phone || '',
+            // Backend zod requires a valid email; phone-only accounts fall
+            // back to the same placeholder the wallet topup endpoint uses.
+            email: receiptEmail(user?.email),
           },
         },
       );
@@ -153,9 +267,15 @@ export default function CheckoutScreen() {
       });
     } catch (err) {
       setIsProcessing(false);
-      const message = err instanceof Error ? err.message : 'Payment could not be started.';
+      const message = describeFailure(err);
       setError(message);
-      failedTransactionAlert(paymentRef, () => handlePay());
+      if (err instanceof ApiError && err.status === 400) {
+        // Contract/validation failure — retrying unchanged cannot succeed, so
+        // explain instead of offering a "nothing was charged" retry loop.
+        Alert.alert('Payment not started', `${message}\n\nNothing was charged.`, [{ text: 'OK' }]);
+      } else {
+        failedTransactionAlert(paymentRef, () => handlePay());
+      }
     }
   };
 
