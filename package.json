@@ -49,6 +49,7 @@
     "@types/leaflet": "^1.9.22",
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
+    "express": "^5.1.0",
     "eslint-config-expo": "~57.0.2",
     "typescript": "~6.0.3"
   },
