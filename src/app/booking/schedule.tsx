@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, SafeAreaView, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, MapPin, ChevronRight, Minus, Plus, Info, ChevronLeft } from 'lucide-react-native';
+import { ArrowLeft, MapPin, ChevronRight, Minus, Plus, Info, ChevronLeft } from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAppTheme } from '../_layout';

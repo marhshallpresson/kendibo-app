@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet, SafeAreaView, Platform, Alert, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation } from '@tanstack/react-query';
-import { ArrowLeft, ShieldCheck, Info, X, MapPin, Camera } from 'lucide-react-native';
+import { ArrowLeft, ShieldCheck, Info, X, MapPin, Camera } from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAppTheme } from '../_layout';
@@ -11,8 +11,8 @@ import { useLocationStore } from '../../stores/locationStore';
 import { useCategories } from '../../services/queryClient';
 import { apiFetch, ApiError } from '../../services/api/client';
 import { uploadMedia } from '../../services/media';
-import { pickEvidence } from '../../utils/images';
 import { useAuthStore } from '../../stores/authStore';
+import { useMediaPicker } from '../../hooks/useMediaPicker';
 
 const URGENCIES = [
   { id: 'this_week' as const, label: 'Standard', time: 'Within 24-48 hrs', fee: 'Free callout on repair' },
@@ -73,30 +73,31 @@ export default function QuoteRequestScreen() {
     },
   });
 
-  const handleAddPhoto = async () => {
-    if (photos.length >= 4) {
-      Alert.alert('Limit Reached', 'You can upload up to 4 diagnostic photos.');
-      return;
-    }
-    const pick = await pickEvidence('library');
-    if (!pick) return;
-    setUploading(true);
-    try {
-      const done = await uploadMedia(pick.uri, 'photo', pick.mime);
-      setPhotos((prev) => [...prev, { uri: pick.uri, url: done.url }]);
-    } catch (e) {
-      Alert.alert(
-        'Photo upload failed',
-        e instanceof Error && e.message ? e.message : 'Check your connection and try again.',
-      );
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleRemovePhoto = (uri: string) => {
     setPhotos((prev) => prev.filter((p) => p.uri !== uri));
   };
+
+  const { open: openAddPhoto, picker: addPhotoPicker } = useMediaPicker({
+    title: 'Add Diagnostic Photo',
+    onSelect: async (media) => {
+      if (photos.length >= 4) {
+        Alert.alert('Limit Reached', 'You can upload up to 4 diagnostic photos.');
+        return;
+      }
+      setUploading(true);
+      try {
+        const done = await uploadMedia(media.uri, 'photo', media.mime);
+        setPhotos((prev) => [...prev, { uri: media.uri, url: done.url }]);
+      } catch (e) {
+        Alert.alert(
+          'Photo upload failed',
+          e instanceof Error && e.message ? e.message : 'Check your connection and try again.',
+        );
+      } finally {
+        setUploading(false);
+      }
+    },
+  });
 
   const handleSubmit = async () => {
     if (!symptomDescription.trim()) {
@@ -241,7 +242,7 @@ export default function QuoteRequestScreen() {
           ))}
           {photos.length < 4 && (
             <Pressable
-              onPress={handleAddPhoto}
+              onPress={openAddPhoto}
               disabled={uploading}
               style={[styles.addPhotoCard, { backgroundColor: colors.surfaceCard, borderColor: colors.border }]}
               accessibilityRole="button"
@@ -276,6 +277,7 @@ export default function QuoteRequestScreen() {
           style={styles.submitBtn}
         />
       </View>
+      {addPhotoPicker}
     </SafeAreaView>
   );
 }

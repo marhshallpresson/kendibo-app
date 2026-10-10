@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Bookmark, Star } from 'lucide-react-native';
+import { ArrowLeft, Bookmark, Star } from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { spacing, radii, fonts } from '../../constants/theme';
 import { EmptyState } from '../../components/ui/EmptyState';

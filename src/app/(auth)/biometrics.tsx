@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { ArrowLeft, FingerprintPattern, CircleUserRound } from 'lucide-react-native';
+import { ArrowLeft, FingerprintPattern, CircleUserRound } from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../stores';
 import { useAppTheme } from '../_layout';

@@ -5,7 +5,7 @@ import { useRouter } from 'expo-router';
 import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapPin, Navigation } from 'lucide-react-native';
+import { MapPin, Navigation } from '@/components/ui/icons';
 import { Header, Button, Input } from '../../../components/ui';
 import { useAppTheme } from '../../_layout';
 import { fonts, spacing, radii } from '../../../constants/theme';

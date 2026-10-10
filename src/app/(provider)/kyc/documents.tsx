@@ -2,9 +2,9 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { UploadCloud, CheckCircle2 } from 'lucide-react-native';
+import { UploadCloud, CheckCircle2 } from '@/components/ui/icons';
 import { Header, Button } from '../../../components/ui';
+import { useMediaPicker } from '../../../hooks/useMediaPicker';
 import { useAppTheme } from '../../_layout';
 import { fonts, spacing, radii } from '../../../constants/theme';
 import { useKycStore } from '../../../stores/kycStore';
@@ -13,18 +13,17 @@ export default function KycDocumentsScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const { documents, setDocuments } = useKycStore();
+  const [activeKey, setActiveKey] = React.useState<'idFrontUri' | 'idBackUri' | 'selfieUri'>('idFrontUri');
 
-  const pickImage = async (key: 'idFrontUri' | 'idBackUri' | 'selfieUri') => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 0.8,
-    });
+  const { open, picker } = useMediaPicker({
+    title: 'Upload Document',
+    allowCamera: false,
+    onSelect: (media) => setDocuments({ [activeKey]: media.uri }),
+  });
 
-    if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      setDocuments({ [key]: uri });
-    }
+  const pickImage = (key: 'idFrontUri' | 'idBackUri' | 'selfieUri') => {
+    setActiveKey(key);
+    open();
   };
 
   const handleNext = () => {
@@ -83,6 +82,8 @@ export default function KycDocumentsScreen() {
         {renderUploadBox('selfieUri', 'Live Selfie')}
         
       </ScrollView>
+
+      {picker}
 
       <View style={styles.footer}>
         <Button title="Continue to Location" onPress={handleNext} size="lg" />

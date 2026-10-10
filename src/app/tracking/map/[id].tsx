@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import MapView, { Marker, Polyline, type LatLng } from 'react-native-maps';
+import { MapView, Camera, MarkerView, ShapeSource, LineLayer } from '@rnmapbox/maps';
 import {
   ArrowLeft,
   Phone,
@@ -18,7 +18,7 @@ import {
   Compass,
   Clock,
   MapPin,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useBooking } from '../../../services/queryClient';
 import { useBookingTracking } from '../../../hooks/useBookingTracking';
 import { Badge } from '../../../components/ui/Badge';
@@ -27,14 +27,18 @@ import { Card } from '../../../components/ui/Card';
 import { spacing, typography, radii, shadows, ColorTokens } from '../../../constants/theme';
 import { useAppTheme } from '../../_layout';
 import { avatarSource } from '../../../constants/images';
+import { initMapbox } from '../../../services/mapbox';
+
+type LatLng = { latitude: number; longitude: number };
 
 export default function TrackingMapScreen() {
   const { colors } = useAppTheme();
   const styles = makeStyles(colors);
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const mapRef = useRef<MapView | null>(null);
+  const cameraRef = React.useRef<React.ElementRef<typeof Camera>>(null);
   const bookingId = typeof id === 'string' ? id : '';
+  const hasMapbox = initMapbox();
 
   // Fetch booking and live tracking
   const { data: booking, isLoading } = useBooking(bookingId);
@@ -116,14 +120,11 @@ export default function TrackingMapScreen() {
 
   const handleRecenter = () => {
     const target = providerCoords || destinationCoords || mapCenter;
-    mapRef.current?.animateToRegion(
-      {
-        ...target,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      },
-      500
-    );
+    cameraRef.current?.setCamera({
+      centerCoordinate: [target.longitude, target.latitude],
+      zoomLevel: 14,
+      animationDuration: 500,
+    });
   };
 
   const handleCallProvider = () => {
@@ -186,60 +187,73 @@ export default function TrackingMapScreen() {
 
   return (
     <View style={styles.screen}>
-      <MapView
-        ref={mapRef}
-        style={styles.mapCanvas}
-        initialRegion={{
-          latitude: mapCenter.latitude,
-          longitude: mapCenter.longitude,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        }}
-        showsUserLocation={false}
-      >
-        {routeLine && (
-          <Polyline coordinates={routeLine} strokeColor={colors.primary} strokeWidth={5} />
-        )}
+      {hasMapbox ? (
+        <MapView style={styles.mapCanvas}>
+          <Camera
+            ref={cameraRef}
+            defaultSettings={{
+              centerCoordinate: [mapCenter.longitude, mapCenter.latitude],
+              zoomLevel: 14,
+            }}
+            animationDuration={0}
+          />
 
-        {hasDestination && (
-          <Marker
-            coordinate={destinationCoords!}
-            title={destinationLabel}
-            anchor={{ x: 0.5, y: 0.9 }}
-          >
-            <View style={styles.destinationWrap}>
-              {hasDestination && (
-                <View style={styles.destPinCallout}>
-                  <Text style={styles.destPinText}>{destinationLabel}</Text>
+          {routeLine && (
+            <ShapeSource
+              id="route-line-source"
+              shape={{
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                  type: 'LineString',
+                  coordinates: routeLine.map((p) => [p.longitude, p.latitude]),
+                },
+              }}
+            >
+              <LineLayer
+                id="route-line"
+                style={{ lineColor: colors.primary, lineWidth: 5 }}
+              />
+            </ShapeSource>
+          )}
+
+          {hasDestination && (
+            <MarkerView coordinate={[destinationCoords!.longitude, destinationCoords!.latitude]} anchor={{ x: 0.5, y: 0.9 }}>
+              <View style={styles.destinationWrap}>
+                {hasDestination && (
+                  <View style={styles.destPinCallout}>
+                    <Text style={styles.destPinText}>{destinationLabel}</Text>
+                  </View>
+                )}
+                <View style={styles.destCircle}>
+                  <MapPin size={22} color="#FFFFFF" fill={colors.error} />
                 </View>
-              )}
-              <View style={styles.destCircle}>
-                <MapPin size={22} color="#FFFFFF" fill={colors.error} />
               </View>
-            </View>
-          </Marker>
-        )}
+            </MarkerView>
+          )}
 
-        {hasProviderLocation && (
-          <Marker
-            coordinate={providerCoords!}
-            title={providerName}
-            anchor={{ x: 0.5, y: 0.6 }}
-          >
-            <View style={styles.providerWrap}>
-              <View style={styles.providerMarkerCallout}>
-                <Text style={styles.providerMarkerText}>
-                  {providerName}
-                  {etaMinutes !== null ? ` (${etaMinutes}m)` : ''}
-                </Text>
+          {hasProviderLocation && (
+            <MarkerView coordinate={[providerCoords!.longitude, providerCoords!.latitude]} anchor={{ x: 0.5, y: 0.6 }}>
+              <View style={styles.providerWrap}>
+                <View style={styles.providerMarkerCallout}>
+                  <Text style={styles.providerMarkerText}>
+                    {providerName}
+                    {etaMinutes !== null ? ` (${etaMinutes}m)` : ''}
+                  </Text>
+                </View>
+                <View style={styles.markerBadge}>
+                  <View style={styles.markerIcon} />
+                </View>
               </View>
-              <View style={styles.markerBadge}>
-                <View style={styles.markerIcon} />
-              </View>
-            </View>
-          </Marker>
-        )}
-      </MapView>
+            </MarkerView>
+          )}
+        </MapView>
+      ) : (
+        <View style={[styles.mapCanvas, { backgroundColor: '#E8ECEF', alignItems: 'center', justifyContent: 'center' }]}>
+          <MapPin size={28} color={colors.textMuted} />
+          <Text style={styles.loadingText}>Map unavailable</Text>
+        </View>
+      )}
 
       <View style={styles.topOverlay}>
         <View style={styles.topControlRow}>

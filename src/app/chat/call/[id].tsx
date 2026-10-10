@@ -17,7 +17,7 @@ import {
   VideoOff,
   MessageSquare,
   ShieldCheck,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useBooking } from '../../../services/queryClient';
 import { Booking } from '../../../types';
 import { spacing, typography, radii, ColorTokens } from '../../../constants/theme';

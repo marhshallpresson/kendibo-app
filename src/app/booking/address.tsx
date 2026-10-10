@@ -22,7 +22,7 @@ import {
   Navigation,
   Phone,
   ShieldAlert,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { Header, Button, Input, Badge, Modal } from '../../components/ui';
 import { useLocationStore } from '../../stores/locationStore';
 import { useAddresses, useAddAddress, useDeleteAddress, useUpdateAddress, useSetDefaultAddress } from '../../services/queryClient';

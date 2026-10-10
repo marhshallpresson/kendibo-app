@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { ArrowLeft, Star, Heart, MoreHorizontal, MessageSquare } from 'lucide-react-native';
+import { ArrowLeft, Star, Heart, MoreHorizontal, MessageSquare } from '@/components/ui/icons';
 import { useAppTheme } from '../../_layout';
 import { spacing, radii, shadows, fonts } from '../../../constants/theme';
 import { useService } from '../../../services/queryClient';

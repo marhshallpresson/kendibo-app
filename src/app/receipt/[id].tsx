@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Download, Share2, CheckCircle2, ShieldCheck, ChevronRight, ChevronDown } from 'lucide-react-native';
+import { ArrowLeft, Download, Share2, CheckCircle2, ShieldCheck, ChevronRight, ChevronDown } from '@/components/ui/icons';
 import QRCode from 'react-native-qrcode-svg';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';

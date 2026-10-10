@@ -18,7 +18,7 @@ import {
   Star,
   Bookmark,
   SearchX,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { spacing, radii, shadows, fonts } from '../../constants/theme';
 import { useCategories, useSearchServices, useServices } from '../../services/queryClient';

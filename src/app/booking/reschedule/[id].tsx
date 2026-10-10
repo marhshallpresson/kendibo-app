@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { resolveImage } from '../../../constants/images';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Calendar, Clock, Info, CalendarCheck, X } from 'lucide-react-native';
+import { ArrowLeft, Calendar, Clock, Info, CalendarCheck, X } from '@/components/ui/icons';
 import { useBooking, useRescheduleBooking } from '../../../services/queryClient';
 import { Booking } from '../../../types';
 import { Button } from '../../../components/ui/Button';

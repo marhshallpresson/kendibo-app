@@ -117,11 +117,12 @@ export const useWalletStore = create<WalletState>((set, get) => ({
       });
 
       if (session?.checkoutUrl) {
-        const WebBrowser = require('expo-web-browser');
-        const result = await WebBrowser.openBrowserAsync(session.checkoutUrl);
-        if (result.type === 'cancel' || result.type === 'dismiss') {
-          return { success: false, reference: session.reference ?? '' };
-        }
+        const { openCheckoutBrowser, verifyPaymentStatus } = require('../services/checkoutBrowser') as typeof import('../services/checkoutBrowser');
+        await openCheckoutBrowser(session.checkoutUrl);
+        // Webhook is the source of truth — verify against backend, not the redirect.
+        const status = await verifyPaymentStatus(session.reference ?? '');
+        await get().refresh();
+        return { success: status === 'PAID', reference: session?.reference || '' };
       }
 
       // Webhook is the source of truth — refresh from the backend.

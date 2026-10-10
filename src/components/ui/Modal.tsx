@@ -9,7 +9,7 @@ import {
   StyleProp,
   TouchableWithoutFeedback,
 } from 'react-native';
-import { X } from 'lucide-react-native';
+import { X } from '@/components/ui/icons';
 import { radii, spacing, typography, shadows, fonts } from '../../constants/theme';
 import { useAppTheme } from '../../constants/ThemeContext';
 

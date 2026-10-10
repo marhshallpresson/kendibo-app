@@ -14,7 +14,7 @@ import {
   MoreHorizontal,
   MessageCircle,
   Calendar as CalendarIcon,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { spacing, radii, shadows, fonts } from '../../constants/theme';
 import { serviceImageSource } from '../../constants/images';

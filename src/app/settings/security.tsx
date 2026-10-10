@@ -14,7 +14,7 @@ import {
   ChevronRight,
   AlertCircle,
   CheckCircle2,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { spacing, radii, fonts } from '../../constants/theme';
 import { Badge } from '../../components/ui/Badge';

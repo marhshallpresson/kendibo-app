@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { resolveImage } from '../../../constants/images';
 import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, AlertTriangle, Wallet, CreditCard, CheckCircle2 } from 'lucide-react-native';
+import { ArrowLeft, AlertTriangle, Wallet, CreditCard, CheckCircle2 } from '@/components/ui/icons';
 import { useBooking, useCancelBooking } from '../../../services/queryClient';
 import { Booking } from '../../../types';
 import { Badge } from '../../../components/ui/Badge';

@@ -23,7 +23,7 @@ import {
   Star,
   Clock,
   XCircle,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 
 interface ServiceRequestStatus {
   id: string;

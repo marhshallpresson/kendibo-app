@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ScrollView, StyleSheet, SafeAreaView, Platform, Alert, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, ShieldCheck, MapPin, Clock, Search, CheckCircle2 } from 'lucide-react-native';
+import { ArrowLeft, ShieldCheck, MapPin, Clock, Search, CheckCircle2 } from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { useAppTheme } from '../_layout';
 import { spacing, fonts, shadows } from '../../constants/theme';

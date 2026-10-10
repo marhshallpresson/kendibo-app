@@ -10,7 +10,6 @@ import {
   Switch,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import {
   Star,
   Camera,
@@ -21,7 +20,7 @@ import {
   ThumbsUp,
   Heart,
   FileCheck,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useBooking } from '../../services/queryClient';
 import { Booking } from '../../types';
 import { Badge } from '../../components/ui/Badge';
@@ -32,6 +31,7 @@ import { Modal } from '../../components/ui/Modal';
 import { spacing, typography, radii, ColorTokens } from '../../constants/theme';
 import { useAppTheme } from '../_layout';
 import { resolveImage, avatarSource } from '../../constants/images';
+import { useMediaPicker } from '../../hooks/useMediaPicker';
 import { formatDateWAT } from '../../utils/date';
 
 const COMPLIMENT_TAGS = [
@@ -121,15 +121,11 @@ export default function ReviewScreen() {
     );
   };
 
-  const handleAddPhoto = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setUploadedPhotos((prev) => [...prev, result.assets[0].uri]);
-    }
-  };
+  const { open: openAddPhoto, picker: addPhotoPicker } = useMediaPicker({
+    title: 'Add Photo',
+    allowCamera: false,
+    onSelect: (media) => setUploadedPhotos((prev) => [...prev, media.uri]),
+  });
 
   const handleRemovePhoto = (index: number) => {
     setUploadedPhotos((prev) => prev.filter((_, i) => i !== index));
@@ -254,7 +250,7 @@ export default function ReviewScreen() {
 
           {uploadedPhotos.length < 4 && (
             <Pressable
-              onPress={handleAddPhoto}
+              onPress={openAddPhoto}
               style={styles.addPhotoButton}
               accessibilityRole="button"
               accessibilityLabel="Add photo"
@@ -421,6 +417,7 @@ export default function ReviewScreen() {
           />
         </View>
       </Modal>
+      {addPhotoPicker}
     </View>
   );
 }

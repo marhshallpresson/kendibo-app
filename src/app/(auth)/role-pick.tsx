@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { User, Briefcase, Check } from 'lucide-react-native';
+import { User, Briefcase, Check } from '@/components/ui/icons';
 import { useAuthStore } from '../../stores';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';

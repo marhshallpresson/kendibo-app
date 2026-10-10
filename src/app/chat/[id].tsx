@@ -12,7 +12,6 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import {
   ArrowLeft,
   Phone,
@@ -23,7 +22,7 @@ import {
   ShieldCheck,
   ChevronRight,
   X,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useBooking, useJobMessages, useSendJobMessage } from '../../services/queryClient';
 import { Booking } from '../../types';
 import { Badge } from '../../components/ui/Badge';
@@ -32,6 +31,7 @@ import { spacing, typography, radii, shadows, ColorTokens } from '../../constant
 import { useAppTheme } from '../_layout';
 import { formatTimeWAT } from '../../utils/date';
 import { useAuthStore } from '../../stores/authStore';
+import { useMediaPicker } from '../../hooks/useMediaPicker';
 
 interface Message {
   id: string;
@@ -97,15 +97,10 @@ export default function ChatDetailScreen() {
     setAttachedImage(null);
   };
 
-  const handleAttachImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setAttachedImage(result.assets[0].uri);
-    }
-  };
+  const { open: openAttach, picker: attachPicker } = useMediaPicker({
+    title: 'Attach Photo',
+    onSelect: (media) => setAttachedImage(media.uri),
+  });
 
   return (
     <KeyboardAvoidingView
@@ -271,7 +266,7 @@ export default function ChatDetailScreen() {
       {/* Bottom Message Input Bar */}
       <View style={styles.inputBar}>
         <Pressable
-          onPress={handleAttachImage}
+          onPress={openAttach}
           style={styles.attachButton}
           accessibilityRole="button"
           accessibilityLabel="Attach photo"
@@ -307,6 +302,7 @@ export default function ChatDetailScreen() {
           </Pressable>
         )}
       </View>
+      {attachPicker}
     </KeyboardAvoidingView>
   );
 }

@@ -16,7 +16,7 @@ import {
   ChevronRight,
   MoreHorizontal,
   Pencil,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { spacing, fonts } from '../../constants/theme';
 import { useAuthStore } from '../../stores';

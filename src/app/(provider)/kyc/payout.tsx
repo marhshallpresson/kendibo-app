@@ -19,7 +19,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Search, ChevronDown, Check, X } from 'lucide-react-native';
+import { Search, ChevronDown, Check, X } from '@/components/ui/icons';
 import { Header, Button, Input } from '../../../components/ui';
 import { useAppTheme } from '../../_layout';
 import { fonts, spacing, radii } from '../../../constants/theme';

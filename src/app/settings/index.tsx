@@ -24,7 +24,7 @@ import {
   Copy,
   UserRound,
   CalendarCheck,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { spacing, radii, fonts } from '../../constants/theme';
 import { Button } from '../../components/ui/Button';

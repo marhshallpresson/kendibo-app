@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Mail, Phone, ArrowLeft } from 'lucide-react-native';
+import { Mail, Phone, ArrowLeft } from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuthStore } from '../../stores';

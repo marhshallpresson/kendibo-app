@@ -5,9 +5,9 @@ import { useOnDemandStore } from '../../../stores/onDemandStore';
 import { theme } from '../../../constants/theme';
 import { Button } from '../../../components/ui/Button';
 import { useCategories } from '../../../services/queryClient';
-import { pickEvidence } from '../../../utils/images';
 import { uploadMedia } from '../../../services/media';
-import { Camera, X } from 'lucide-react-native';
+import { Camera, X } from '@/components/ui/icons';
+import { useMediaPicker } from '../../../hooks/useMediaPicker';
 
 export default function CategoryScreen() {
   const router = useRouter();
@@ -22,30 +22,31 @@ export default function CategoryScreen() {
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
 
-  const handleAddPhoto = async () => {
-    if (photoUrls.length >= 4) {
-      Alert.alert('Limit Reached', 'You can attach up to 4 photos.');
-      return;
-    }
-    const pick = await pickEvidence('library');
-    if (!pick) return;
-    setUploading(true);
-    try {
-      const done = await uploadMedia(pick.uri, 'photo', pick.mime);
-      setPhotoUrls((prev) => [...prev, done.url]);
-    } catch (e) {
-      Alert.alert(
-        'Photo upload failed',
-        e instanceof Error && e.message ? e.message : 'Check your connection and try again.',
-      );
-    } finally {
-      setUploading(false);
-    }
-  };
-
   const handleRemovePhoto = (url: string) => {
     setPhotoUrls((prev) => prev.filter((u) => u !== url));
   };
+
+  const { open: openAddPhoto, picker: addPhotoPicker } = useMediaPicker({
+    title: 'Add Photo',
+    onSelect: async (media) => {
+      if (photoUrls.length >= 4) {
+        Alert.alert('Limit Reached', 'You can attach up to 4 photos.');
+        return;
+      }
+      setUploading(true);
+      try {
+        const done = await uploadMedia(media.uri, 'photo', media.mime);
+        setPhotoUrls((prev) => [...prev, done.url]);
+      } catch (e) {
+        Alert.alert(
+          'Photo upload failed',
+          e instanceof Error && e.message ? e.message : 'Check your connection and try again.',
+        );
+      } finally {
+        setUploading(false);
+      }
+    },
+  });
 
   const handleNext = () => {
     if (!selectedId || !selectedName) return;
@@ -111,7 +112,7 @@ export default function CategoryScreen() {
         {photoUrls.length < 4 && (
           <TouchableOpacity
             style={[styles.photoThumb, styles.photoAdd]}
-            onPress={handleAddPhoto}
+              onPress={openAddPhoto}
             disabled={uploading}
             accessibilityLabel="Add photo"
           >
@@ -130,6 +131,7 @@ export default function CategoryScreen() {
         disabled={!selectedId}
         style={styles.button}
       />
+      {addPhotoPicker}
     </ScrollView>
   );
 }

@@ -25,7 +25,7 @@ import {
   Hammer,
   Grid,
   Star,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import {
   spacing,

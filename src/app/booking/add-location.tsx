@@ -2,9 +2,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { MapView, Camera, MarkerView } from '@rnmapbox/maps';
 import * as Location from 'expo-location';
-import { MapPin, Navigation } from 'lucide-react-native';
+import { MapPin, Navigation } from '@/components/ui/icons';
 import { Header, Button, Input } from '../../components/ui';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
@@ -12,12 +12,14 @@ import { useLocationStore } from '../../stores/locationStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useAddAddress } from '../../services/queryClient';
 import { apiFetch } from '@/services/api/client';
+import { initMapbox } from '@/services/mapbox';
 
-type Region = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
+type MapCenter = { latitude: number; longitude: number };
 type CoverageCity = { cityId: string; city: string; lat: number; lng: number; radiusKm: number };
 type GeoResult = { lat?: number; lng?: number; formatted?: string };
 
-const MAP_DELTA = { latitudeDelta: 0.01, longitudeDelta: 0.01 };
+/** ~0.01° street-level delta equivalent in Mapbox zoom. */
+const ZOOM_STREET = 15;
 const REVERSE_DEBOUNCE_MS = 450;
 const SEARCH_DEBOUNCE_MS = 400;
 const MIN_SEARCH_CHARS = 3;
@@ -41,22 +43,24 @@ export default function AddLocationScreen() {
   const user = useAuthStore((s) => s.user);
   const { currentAddress, currentCoordinates } = useLocationStore();
   const addAddressMutation = useAddAddress();
+  const hasMapbox = initMapbox();
+  const cameraRef = useRef<React.ElementRef<typeof Camera>>(null);
 
-  const [region, setRegion] = useState<Region | null>(() => {
+  const [center, setCenter] = useState<MapCenter | null>(() => {
     if (isRealCoord(currentAddress?.coordinates?.latitude, currentAddress?.coordinates?.longitude)) {
-      return { ...currentAddress!.coordinates, ...MAP_DELTA };
+      return { latitude: currentAddress!.coordinates.latitude, longitude: currentAddress!.coordinates.longitude };
     }
     if (isRealCoord(currentCoordinates?.latitude, currentCoordinates?.longitude)) {
-      return { ...currentCoordinates!, ...MAP_DELTA };
+      return { latitude: currentCoordinates!.latitude, longitude: currentCoordinates!.longitude };
     }
     return null;
   });
-  const startRegionRef = useRef<Region | null>(region);
+  const centerRef = useRef<MapCenter | null>(center);
 
   const [addressText, setAddressText] = useState('');
   const [hint, setHint] = useState('');
   const [saving, setSaving] = useState(false);
-  const [locating, setLocating] = useState(region == null);
+  const [locating, setLocating] = useState(center == null);
   const [city, setCity] = useState<string | undefined>(currentAddress?.city);
 
   const reverseDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -66,13 +70,13 @@ export default function AddLocationScreen() {
   const sourceRef = useRef<'gps' | 'map' | 'input'>('gps');
   const mountedRef = useRef(true);
 
-  const applyCenter = useCallback((lat: number, lng: number) => {
-    setRegion((prev) => ({
-      latitude: lat,
-      longitude: lng,
-      latitudeDelta: prev?.latitudeDelta ?? MAP_DELTA.latitudeDelta,
-      longitudeDelta: prev?.longitudeDelta ?? MAP_DELTA.longitudeDelta,
-    }));
+  const applyCenter = useCallback((lat: number, lng: number, zoom = ZOOM_STREET) => {
+    setCenter({ latitude: lat, longitude: lng });
+    cameraRef.current?.setCamera({
+      centerCoordinate: [lng, lat],
+      zoomLevel: zoom,
+      animationDuration: 400,
+    });
   }, []);
 
   const reverseGeocode = useCallback(async (lat: number, lng: number) => {
@@ -165,7 +169,7 @@ export default function AddLocationScreen() {
 
   useEffect(() => {
     mountedRef.current = true;
-    const start = startRegionRef.current;
+    const start = centerRef.current;
     if (start) {
       void reverseGeocode(start.latitude, start.longitude);
     } else {
@@ -190,13 +194,15 @@ export default function AddLocationScreen() {
     }, SEARCH_DEBOUNCE_MS);
   };
 
-  const handleRegionChangeComplete = (r: Region) => {
-    setRegion(r);
+  const handleMapIdle = (state: { properties?: { center?: number[] } }) => {
+    const c = state?.properties?.center;
+    if (!Array.isArray(c) || c.length < 2 || !isRealCoord(c[1], c[0])) return;
+    setCenter({ latitude: c[1], longitude: c[0] });
     if (sourceRef.current === 'input') return; // programmatic move caused by a typed search
     sourceRef.current = 'map';
     if (reverseDebounceRef.current) clearTimeout(reverseDebounceRef.current);
     reverseDebounceRef.current = setTimeout(() => {
-      void reverseGeocode(r.latitude, r.longitude);
+      void reverseGeocode(c[1], c[0]);
     }, REVERSE_DEBOUNCE_MS);
   };
 
@@ -212,7 +218,7 @@ export default function AddLocationScreen() {
       setHint('Enter an address, or allow location access so we can detect one.');
       return;
     }
-    if (!region) {
+    if (!center) {
       setHint('Set your location first — allow GPS or search for your address.');
       return;
     }
@@ -230,7 +236,7 @@ export default function AddLocationScreen() {
         isDefault: false,
         city: city || undefined,
         state: currentAddress?.state,
-        coordinates: { latitude: region.latitude, longitude: region.longitude },
+        coordinates: { latitude: center.latitude, longitude: center.longitude },
       });
       const store = useLocationStore.getState();
       store.setAddress(created);
@@ -252,17 +258,19 @@ export default function AddLocationScreen() {
       <Header title="Your Address/Location" onBack={() => router.back()} />
 
       <View style={styles.mapContainer}>
-        {Platform.OS === 'web' || !region ? (
+        {Platform.OS === 'web' || !center || !hasMapbox ? (
           <View style={[styles.mapFallback, { backgroundColor: colors.primaryLight }]}>
             <MapPin size={40} color={colors.primary} />
             <Text style={{ color: colors.primary, fontFamily: fonts.bold, textAlign: 'center' }}>
-              {!region
-                ? locating
-                  ? 'Finding your location…'
-                  : 'Location unavailable'
-                : 'Map View'}
+              {!hasMapbox
+                ? 'Map unavailable'
+                : !center
+                  ? locating
+                    ? 'Finding your location…'
+                    : 'Location unavailable'
+                  : 'Map View'}
             </Text>
-            {!region && (
+            {!center && (
               <Button
                 title="Use my current location"
                 onPress={handleUseMyLocation}
@@ -274,13 +282,17 @@ export default function AddLocationScreen() {
             )}
           </View>
         ) : (
-          <MapView
-            style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            region={region}
-            onRegionChangeComplete={handleRegionChangeComplete}
-          >
-            <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} />
+          <MapView style={styles.map} onMapIdle={handleMapIdle}>
+            <Camera
+              ref={cameraRef}
+              defaultSettings={{
+                centerCoordinate: [center.longitude, center.latitude],
+                zoomLevel: ZOOM_STREET,
+              }}
+            />
+            <MarkerView coordinate={[center.longitude, center.latitude]}>
+              <MapPin size={32} color={colors.primary} />
+            </MarkerView>
           </MapView>
         )}
       </View>

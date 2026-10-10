@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowDownLeft } from 'lucide-react-native';
+import { ArrowDownLeft } from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import { Header } from '../../components/ui';

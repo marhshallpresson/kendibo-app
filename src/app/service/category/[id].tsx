@@ -12,7 +12,7 @@ import {
   ShoppingCart,
   ArrowRight,
   Bookmark,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useAppTheme } from '../../_layout';
 import { spacing, radii, shadows, fonts, tileTints } from '../../../constants/theme';
 import { useCategories, useServices } from '../../../services/queryClient';

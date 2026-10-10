@@ -21,6 +21,7 @@ import { registerForPushAsync } from '../services/push';
 import { initWatchup, watchup } from '../services/watchup';
 import { NetworkBanner } from '../components/ui/NetworkBanner';
 import { WatchupErrorBoundary } from '../components/WatchupErrorBoundary';
+import { WebDownloadModal } from '../components/WebDownloadModal';
 
 export { ThemeContext, useAppTheme };
 export type { ThemeContextType };
@@ -88,7 +89,9 @@ export default function RootLayout() {
             <Stack.Screen name="index" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack></View>
+          </Stack>
+            {Platform.OS === 'web' && <WebDownloadModal />}
+          </View>
           </WatchupErrorBoundary>
         </ThemeProvider>
       </QueryClientProvider>

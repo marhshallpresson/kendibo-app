@@ -15,7 +15,7 @@ import {
   MapPin,
   ShieldCheck,
   Home,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { EmptyState } from '../../components/ui/EmptyState';

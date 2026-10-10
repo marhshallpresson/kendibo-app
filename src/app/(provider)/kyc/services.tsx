@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Check } from 'lucide-react-native';
+import { Check } from '@/components/ui/icons';
 import { Header, Button, EmptyState } from '../../../components/ui';
 import { useAppTheme } from '../../_layout';
 import { fonts, spacing, radii } from '../../../constants/theme';

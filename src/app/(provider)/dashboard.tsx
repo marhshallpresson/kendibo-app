@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronRight, CheckCircle2 } from 'lucide-react-native';
+import { ChevronRight, CheckCircle2 } from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import { Header } from '@/components/ui';

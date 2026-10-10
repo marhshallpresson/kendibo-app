@@ -8,7 +8,7 @@ import {
   Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, CheckCircle2 } from 'lucide-react-native';
+import { ArrowLeft, CheckCircle2 } from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { spacing, radii, fonts } from '../../constants/theme';
 import { Button } from '../../components/ui/Button';

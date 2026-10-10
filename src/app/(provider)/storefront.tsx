@@ -1,9 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Switch } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+  Switch,
+  Pressable,
+  Image,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Star } from 'lucide-react-native';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Star, Camera, X } from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
 import { Header, Button, Badge, EmptyState } from '../../components/ui';
@@ -11,6 +21,8 @@ import type { BadgeVariant } from '../../components/ui/Badge';
 import { jobApi } from '@/services/api/jobs';
 import { useProviderProfile } from '@/hooks/useProviderId';
 import { useAuthStore } from '@/stores/authStore';
+import { useMediaPicker } from '../../hooks/useMediaPicker';
+import { addGalleryPhoto, galleryUrl, listMyGallery, removeGalleryPhoto } from '@/services/api/gallery';
 
 function kycBadge(kycStatus: string): { label: string; variant: BadgeVariant } {
   const s = (kycStatus || '').toLowerCase();
@@ -34,6 +46,37 @@ export default function StorefrontScreen() {
       qc.invalidateQueries({ queryKey: ['provider-profile'] });
       qc.invalidateQueries({ queryKey: ['provider-id'] });
     },
+  });
+
+  const { data: photos = [], isLoading: photosLoading } = useQuery({
+    queryKey: ['provider-gallery', profile?.id],
+    enabled: !!profile?.id,
+    queryFn: () => listMyGallery(),
+  });
+
+  const addPhoto = useMutation({
+    mutationFn: (media: { uri: string; mime?: string }) => addGalleryPhoto(media.uri, media.mime),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['provider-gallery'] }),
+    onError: (e) =>
+      Alert.alert(
+        'Photo upload failed',
+        e instanceof Error && e.message ? e.message : 'Check your connection and try again.',
+      ),
+  });
+
+  const { open: openAddPhoto, picker: addPhotoPicker } = useMediaPicker({
+    title: 'Add Storefront Photo',
+    onSelect: (media) => addPhoto.mutate({ uri: media.uri, mime: media.mime }),
+  });
+
+  const removePhoto = useMutation({
+    mutationFn: (entryId: string) => removeGalleryPhoto(entryId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['provider-gallery'] }),
+    onError: (e) =>
+      Alert.alert(
+        "Couldn't remove photo",
+        e instanceof Error && e.message ? e.message : 'Check your connection and try again.',
+      ),
   });
 
   const onlineMutation = useMutation({
@@ -137,6 +180,45 @@ export default function StorefrontScreen() {
           )}
         </View>
 
+        {/* Storefront photos */}
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Storefront Photos</Text>
+          <Text style={[styles.note, { color: colors.textSecondary, marginBottom: spacing.md }]}>
+            Photos help customers see your work and trust your profile.
+          </Text>
+          <View style={styles.photoRow}>
+            {photos.length === 0 && !photosLoading && (
+              <Text style={[styles.note, { color: colors.textSecondary, marginBottom: spacing.md }]}>
+                No photos yet. Add a few to show customers your work.
+              </Text>
+            )}
+            {photos.map((photo) => (
+              <View key={photo.id} style={styles.photoItem}>
+                <Image source={{ uri: galleryUrl(photo) }} style={styles.photoThumb} />
+                <Pressable
+                  style={styles.photoRemove}
+                  onPress={() => removePhoto.mutate(photo.id)}
+                  hitSlop={8}
+                  accessibilityLabel="Remove photo"
+                >
+                  <X size={12} color="#fff" />
+                </Pressable>
+              </View>
+            ))}
+            <Pressable
+              style={[styles.photoAdd, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}
+              onPress={openAddPhoto}
+              accessibilityLabel="Add storefront photo"
+            >
+              {addPhoto.isPending || photosLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Camera size={22} color={colors.primary} />
+              )}
+            </Pressable>
+          </View>
+        </View>
+
         {/* Skills / services */}
         <View style={[styles.card, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Skills & Services</Text>
@@ -170,6 +252,7 @@ export default function StorefrontScreen() {
         <Text style={[styles.placeholderNote, { color: colors.textSecondary }]}>
           Profile editing is coming soon. Your details are managed during verification.
         </Text>
+        {addPhotoPicker}
       </ScrollView>
     </SafeAreaView>
   );
@@ -210,6 +293,29 @@ const styles = StyleSheet.create({
     borderRadius: radii.full,
   },
   chipText: { fontFamily: fonts.semiBold, fontSize: 13 },
+  photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  photoItem: { width: 72, height: 72, borderRadius: radii.md, overflow: 'hidden' },
+  photoThumb: { width: '100%', height: '100%', resizeMode: 'cover' },
+  photoRemove: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoAdd: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   note: { fontFamily: fonts.regular, fontSize: 13, lineHeight: 18 },
   placeholderNote: {
     fontFamily: fonts.regular,

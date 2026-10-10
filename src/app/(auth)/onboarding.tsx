@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowRight, ArrowLeft } from 'lucide-react-native';
+import { ArrowRight, ArrowLeft } from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../stores';
 import { useAppTheme } from '../_layout';

@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, BellRing, Tag, MessageCircle, Info, CheckCheck } from 'lucide-react-native';
+import { ArrowLeft, BellRing, Tag, MessageCircle, Info, CheckCheck } from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { spacing, radii, fonts } from '../../constants/theme';
 import { EmptyState } from '../../components/ui/EmptyState';

@@ -53,17 +53,31 @@
         }
       ],
       "expo-secure-store",
-      "expo-video",
       "expo-web-browser",
       "@rnmapbox/maps"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "associatedDomains": [
+        "applinks:kendibo.ng",
+        "applinks:kendibo-app.pxxl.click"
+      ]
     },
     "android": {
       "package": "com.kendibo.app",
       "versionCode": 1,
       "softwareKeyboardLayoutMode": "pan",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "kendibo.ng", "pathPrefix": "/" },
+            { "scheme": "https", "host": "kendibo-app.pxxl.click", "pathPrefix": "/" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",

@@ -24,7 +24,7 @@ import {
   Check,
   ShieldCheck,
   Delete,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { isValidEmail, isValidNigerianPhone } from '../../utils';

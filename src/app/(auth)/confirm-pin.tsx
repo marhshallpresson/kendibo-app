@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Delete } from 'lucide-react-native';
+import { ArrowLeft, Delete } from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../stores';
 import { useAppTheme } from '../_layout';

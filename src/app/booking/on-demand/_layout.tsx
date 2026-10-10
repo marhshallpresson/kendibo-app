@@ -1,6 +1,6 @@
 import { Stack, useRouter } from 'expo-router';
 import { TouchableOpacity, Text } from 'react-native';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft } from '@/components/ui/icons';
 import { theme } from '../../../constants/theme';
 
 export default function OnDemandLayout() {

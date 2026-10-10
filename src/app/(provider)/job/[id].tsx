@@ -2,11 +2,10 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, ActivityIndicator, Linking, Pressable, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { jobApi } from '@/services/api/jobs';
 import { fileManager } from '@/services/fileManager';
-import { MapPin, Camera, CheckSquare, Square } from 'lucide-react-native';
+import { MapPin, Camera, CheckSquare, Square } from '@/components/ui/icons';
 import { useAppTheme } from '../../_layout';
 import { fonts, spacing, radii } from '../../../constants/theme';
 import { Header, Button, Badge, EmptyState } from '../../../components/ui';
@@ -14,6 +13,7 @@ import type { BadgeVariant } from '../../../components/ui/Badge';
 import { useAuthStore } from '../../../stores/authStore';
 import { useProviderId } from '../../../hooks/useProviderId';
 import { useTrackingLocation } from '../../../hooks/useTrackingLocation';
+import { useMediaPicker } from '../../../hooks/useMediaPicker';
 import { formatKoboToNaira } from '../../../utils/currency';
 
 const ACTIVE_JOURNEY_STATUSES = new Set(['EN_ROUTE', 'ARRIVED', 'IN_PROGRESS']);
@@ -164,17 +164,13 @@ export default function JobExecutionScreen() {
     setCheckedItems((prev) => (prev.includes(cid) ? prev.filter((item) => item !== cid) : [...prev, cid]));
   };
 
-  const addEvidence = async () => {
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
-      setEvidence((prev) => [...prev, uri]);
-      uploadEvidence(uri);
-    }
-  };
+  const { open: openEvidence, picker: evidencePicker } = useMediaPicker({
+    title: 'Proof of Work',
+    onSelect: (media) => {
+      setEvidence((prev) => [...prev, media.uri]);
+      uploadEvidence(media.uri);
+    },
+  });
 
   const handleTransition = (to: string) => {
     if (to === 'COMPLETED') {
@@ -365,7 +361,7 @@ export default function JobExecutionScreen() {
               {evidence.map((uri, i) => (
                 <Image key={i} source={{ uri }} style={styles.evidenceImage} />
               ))}
-              <Pressable style={[styles.addEvidence, { borderColor: colors.border }]} onPress={addEvidence}>
+              <Pressable style={[styles.addEvidence, { borderColor: colors.border }]} onPress={openEvidence}>
                 <Camera size={32} color={colors.textSecondary} />
                 <Text style={[styles.addEvidenceText, { color: colors.textSecondary }]}>Add Photo</Text>
               </Pressable>
@@ -373,6 +369,7 @@ export default function JobExecutionScreen() {
           </View>
         )}
       </ScrollView>
+      {evidencePicker}
     </SafeAreaView>
   );
 }

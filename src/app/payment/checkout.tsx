@@ -18,7 +18,7 @@ import {
   MapPin,
   ChevronDown,
   Zap,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { useAppTheme } from '../_layout';
 import { radii, spacing, fonts, shadows } from '../../constants/theme';
@@ -332,11 +332,29 @@ export default function CheckoutScreen() {
         /* telemetry must never break checkout */
       }
 
-      // 3. Open the Bachs hosted checkout in the browser. The webhook is the
-      //    source of truth for completion; the deep-link callback verifies it.
+      // 3. Open the Bachs hosted checkout in the in-app browser. The
+      //    kendibo:// deep-link return closes it when the OS honors the
+      //    scheme; otherwise the user closes it manually. Either way the
+      //    webhook status below is the source of truth — the redirect lies.
+      const paymentRefFinal = session?.reference ?? paymentRef;
       if (session?.checkoutUrl) {
-        const WebBrowser = require('expo-web-browser');
-        await WebBrowser.openBrowserAsync(session.checkoutUrl);
+        const { openCheckoutBrowser, verifyPaymentStatus } = require('../../services/checkoutBrowser') as typeof import('../../services/checkoutBrowser');
+        await openCheckoutBrowser(session.checkoutUrl);
+        const status = await verifyPaymentStatus(paymentRefFinal);
+        setIsProcessing(false);
+        router.replace({
+          pathname: '/payment/success',
+          params: {
+            bookingId: booking.id,
+            bookingNumber: booking.bookingNumber ?? '',
+            paymentRef: paymentRefFinal,
+            amountKobo: String(chargedKobo),
+            method: 'BACHS_CHECKOUT',
+            serviceName: targetServiceName,
+            paymentStatus: status,
+          },
+        });
+        return;
       }
 
       setIsProcessing(false);
@@ -349,6 +367,7 @@ export default function CheckoutScreen() {
           amountKobo: String(chargedKobo),
           method: 'BACHS_CHECKOUT',
           serviceName: targetServiceName,
+          paymentStatus: 'PENDING',
         },
       });
     } catch (err) {

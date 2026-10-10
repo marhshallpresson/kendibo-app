@@ -1,6 +1,6 @@
 import React from 'react';
 import { Tabs, Redirect } from 'expo-router';
-import { LayoutDashboard, Calendar, Store, CircleDollarSign } from 'lucide-react-native';
+import { LayoutDashboard, Calendar, Store, CircleDollarSign } from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 
 import { GeofenceGuard } from '@/components/GeofenceGuard';

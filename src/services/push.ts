@@ -22,8 +22,8 @@ const ANDROID_CHANNEL = 'kendibo-jobs';
  * - creates the high-importance Android job channel
  * - gets the FCM push token, persists it in expo-secure-store
  *   under 'kendibo_push_token', and returns it
- * - does NOT upload the token anywhere (no backend push endpoint yet —
- *   token is only logged)
+ * - uploadStoredPushToken() sends it to POST /v1/devices once a user
+ *   session exists (called from the auth store after login/hydrate)
  * - Expo Go / missing FCM config / denied permission: returns null
  */
 export async function registerForPushAsync(): Promise<string | null> {
@@ -70,12 +70,35 @@ export async function registerForPushAsync(): Promise<string | null> {
     const pushToken = (await notifications.getDevicePushTokenAsync()).data;
 
     await SecureStore.setItemAsync(PUSH_TOKEN_KEY, pushToken);
-    // No backend push endpoint yet — log only, do not upload.
-    console.log('[push] FCM push token (stored locally, not uploaded):', pushToken);
+    console.log('[push] FCM push token stored:', pushToken);
     return pushToken;
   } catch (e) {
     console.log('[push] registerForPushAsync failed — returning null', e);
     return null;
+  }
+}
+
+/**
+ * Uploads the locally stored FCM token to POST /v1/devices so the backend
+ * channel router can target this device. Best-effort: requires a stored token
+ * and a logged-in user; failures are swallowed (never breaks boot/login).
+ */
+export async function uploadStoredPushToken(): Promise<void> {
+  try {
+    const token = await getStoredPushToken();
+    if (!token) return;
+    const { useAuthStore } = require('../stores/authStore') as typeof import('../stores/authStore');
+    const userId = useAuthStore.getState().user?.id;
+    if (!userId) return;
+    const { apiFetch } = require('./api/client') as typeof import('./api/client');
+    const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+    await apiFetch('/v1/devices', {
+      method: 'POST',
+      body: { userId, platform, pushToken: token, channel: ANDROID_CHANNEL },
+    });
+    console.log('[push] token uploaded to backend for user', userId);
+  } catch (e) {
+    console.log('[push] token upload failed (best-effort)', e);
   }
 }
 

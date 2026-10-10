@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { useOnDemandStore, OnDemandUrgency } from '../../../stores/onDemandStore';
 import { theme } from '../../../constants/theme';
 import { Button } from '../../../components/ui/Button';
-import { MapPin, Clock, AlertTriangle, CalendarDays, Plus } from 'lucide-react-native';
+import { MapPin, Clock, AlertTriangle, CalendarDays, Plus } from '@/components/ui/icons';
 import { useAddresses } from '../../../services/queryClient';
 
 const URGENCY_OPTIONS: { id: OnDemandUrgency; title: string; desc: string }[] = [

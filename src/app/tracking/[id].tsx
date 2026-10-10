@@ -19,7 +19,7 @@ import {
   Circle,
   Star,
   RotateCcw,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useBooking } from '../../services/queryClient';
 import { useBookingTracking } from '../../hooks/useBookingTracking';
 import { JobStatus } from '../../types';

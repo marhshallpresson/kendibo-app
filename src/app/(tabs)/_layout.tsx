@@ -7,7 +7,7 @@ import {
   Calendar,
   MessageSquare,
   User,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { fonts } from '../../constants/theme';
 

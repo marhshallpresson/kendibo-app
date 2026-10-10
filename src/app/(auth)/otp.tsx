@@ -9,10 +9,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft } from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { useAuthStore } from '../../stores';
 import { useAppTheme } from '../_layout';
@@ -57,6 +58,23 @@ export default function OtpScreen() {
     }, 200);
 
     return () => clearTimeout(timeout);
+  }, []);
+
+  // Returning from the app switcher/background drops focus on the hidden
+  // input (Android especially) — the tap-to-refocus on the boxes works, but
+  // auto-reopen the keyboard so the user is never stuck with a dead input.
+  useEffect(() => {
+    let focusTimeout: ReturnType<typeof setTimeout> | null = null;
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        if (focusTimeout) clearTimeout(focusTimeout);
+        focusTimeout = setTimeout(() => inputRef.current?.focus(), 150);
+      }
+    });
+    return () => {
+      if (focusTimeout) clearTimeout(focusTimeout);
+      sub.remove();
+    };
   }, []);
 
   useEffect(() => {

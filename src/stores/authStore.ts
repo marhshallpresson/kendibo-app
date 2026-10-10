@@ -79,6 +79,36 @@ async function persistSession(access: string, refresh: string, user: User): Prom
   await storageSet(USER_KEY, JSON.stringify(user));
 }
 
+/**
+ * Post-login side effects — both fire-and-forget (never block/throw the auth
+ * flow). Push token upload targets POST /v1/devices so the notification
+ * channel router can reach this device. The in-app welcome row seeds the
+ * notification inbox for freshly-created accounts.
+ */
+function afterLoginSideEffects(isNew: boolean, name?: string): void {
+  void (async () => {
+    try {
+      const { uploadStoredPushToken } = await import('../services/push');
+      await uploadStoredPushToken();
+    } catch {
+      /* best-effort */
+    }
+    if (isNew) {
+      try {
+        const { useNotificationStore } = await import('./notificationStore');
+        useNotificationStore.getState().addNotification({
+          kind: 'system',
+          title: 'Welcome to KENDIBO 👋',
+          body: `Hi ${(name || 'there').split(' ')[0]} — your account is ready. Book a trusted professional in under 60 seconds.`,
+          route: '/(tabs)',
+        });
+      } catch {
+        /* best-effort */
+      }
+    }
+  })();
+}
+
 async function clearPersistedSession(): Promise<void> {
   // Onboarding stays completed — only the session is torn down.
   for (const key of [ACCESS_KEY, REFRESH_KEY, USER_KEY, PIN_KEY, BIOMETRICS_KEY]) {
@@ -237,6 +267,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         access: string;
         refresh: string;
         deviceId?: string;
+        isNew?: boolean;
       }>('/v1/auth/otp/verify', {
         method: 'POST',
         body: { channel, identity: id, code: c, name: name?.trim(), role },
@@ -264,6 +295,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } catch {
         /* ignore */
       }
+      afterLoginSideEffects(Boolean(data.isNew), user.name);
       return user;
     } catch (err) {
       if (err instanceof ApiError) throw new Error(err.message);
@@ -304,6 +336,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } catch {
         /* ignore */
       }
+      afterLoginSideEffects(Boolean(data.isNew), user.name);
       return { user, isNew: Boolean(data.isNew) };
     } catch (err) {
       if (err instanceof ApiError) throw new Error(err.message);
@@ -357,6 +390,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         pin: pinValue,
         isBiometricEnabled: bioFlag === '1',
       };
+
+      // Fire-and-forget: (re)register this device's push token on every boot
+      // so the backend can reach it (no-op when signed out / never registered).
+      if (access) afterLoginSideEffects(false);
 
       if (!access) {
         set({ ...baseFlags, user: null, token: null, isAuthenticated: false, isLocked: false });

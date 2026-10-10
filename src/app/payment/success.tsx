@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView, ScrollView, Pressable } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Check, FileText, MapPin, ShieldCheck, Home } from 'lucide-react-native';
+import { ArrowLeft, Check, FileText, MapPin, ShieldCheck, Home } from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { useAppTheme } from '../_layout';
 import { spacing, fonts, shadows } from '../../constants/theme';
@@ -16,6 +16,7 @@ export default function PaymentSuccessScreen() {
     amountKobo?: string;
     method?: string;
     serviceName?: string;
+    paymentStatus?: string;
   }>();
   const { colors } = useAppTheme();
 
@@ -23,6 +24,8 @@ export default function PaymentSuccessScreen() {
   const bookingNumber = params.bookingNumber || '';
   const amountKobo = params.amountKobo ? parseInt(params.amountKobo, 10) : 0;
   const serviceName = params.serviceName || 'Service booking';
+  // Webhook truth from GET /v1/payments/:ref — the deep-link redirect is never trusted.
+  const isPaid = String(params.paymentStatus ?? 'PAID').toUpperCase() === 'PAID';
 
   const handleViewReceipt = () => {
     router.push({
@@ -86,13 +89,17 @@ export default function PaymentSuccessScreen() {
           ))}
         </View>
 
-        <Text style={[styles.title, { color: colors.primary, fontFamily: fonts.extraBold }]}>Booking Successful!</Text>
+        <Text style={[styles.title, { color: isPaid ? colors.primary : colors.textPrimary, fontFamily: fonts.extraBold }]}>
+          {isPaid ? 'Booking Successful!' : 'Booking Received — Payment Pending'}
+        </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: fonts.regular }]}>
-          You have successfully made payment and booked the services.
+          {isPaid
+            ? 'You have successfully made payment and booked the services.'
+            : 'Your booking is saved. We are confirming the payment with your bank and will notify you the moment it clears — you will not be charged twice.'}
         </Text>
 
         <View style={[styles.amountContainer, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
-          <Text style={[styles.amountLabel, { color: colors.textMuted, fontFamily: fonts.semiBold }]}>Amount Paid</Text>
+          <Text style={[styles.amountLabel, { color: colors.textMuted, fontFamily: fonts.semiBold }]}>{isPaid ? 'Amount Paid' : 'Amount'}</Text>
           <Text style={[styles.amountValue, { color: colors.primary, fontFamily: fonts.extraBold }]}>
             {formatKoboToNaira(amountKobo)}
           </Text>

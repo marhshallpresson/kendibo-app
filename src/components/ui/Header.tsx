@@ -7,7 +7,7 @@ import {
   ViewStyle,
   StyleProp,
 } from 'react-native';
-import { ArrowLeft } from 'lucide-react-native';
+import { ArrowLeft } from '@/components/ui/icons';
 import { spacing, typography, fonts } from '../../constants/theme';
 import { useAppTheme } from '../../constants/ThemeContext';
 

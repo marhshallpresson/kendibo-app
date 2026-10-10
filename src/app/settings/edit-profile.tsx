@@ -10,14 +10,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Pencil } from 'lucide-react-native';
+import { ArrowLeft, Pencil } from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuthStore } from '../../stores';
 import { useAppTheme } from '../_layout';
 import { fonts, spacing, radii } from '../../constants/theme';
-import { pickEvidence } from '../../utils/images';
 import { uploadMedia } from '../../services/media';
+import { useMediaPicker } from '../../hooks/useMediaPicker';
 
 /**
  * Edit Profile — mirrors the reference design: avatar with edit badge,
@@ -38,22 +38,23 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const handleAvatar = async () => {
-    setError('');
-    const pick = await pickEvidence('library');
-    if (!pick) return;
-    setUploading(true);
-    try {
-      const done = await uploadMedia(pick.uri, 'avatar', pick.mime);
-      setAvatarUrl(done.url);
-    } catch (e) {
-      // Never fall back to the local picker URI (blob:/file://) — it is
-      // not resolvable after restart and breaks avatar rendering.
-      setError(e instanceof Error && e.message ? e.message : 'Photo upload failed. Please try again.');
-    } finally {
-      setUploading(false);
-    }
-  };
+  const { open: openAvatarPicker, picker: avatarPicker } = useMediaPicker({
+    title: 'Update Photo',
+    onSelect: async (media) => {
+      setError('');
+      setUploading(true);
+      try {
+        const done = await uploadMedia(media.uri, 'avatar', media.mime);
+        setAvatarUrl(done.url);
+      } catch (e) {
+        // Never fall back to the local picker URI (blob:/file://) — it is
+        // not resolvable after restart and breaks avatar rendering.
+        setError(e instanceof Error && e.message ? e.message : 'Photo upload failed. Please try again.');
+      } finally {
+        setUploading(false);
+      }
+    },
+  });
 
   const handleSave = async () => {
     setError('');
@@ -91,7 +92,7 @@ export default function EditProfileScreen() {
           )}
           <Pressable
             style={[styles.editBadge, { backgroundColor: colors.primary }]}
-            onPress={handleAvatar}
+            onPress={openAvatarPicker}
             accessibilityRole="button"
             accessibilityLabel="Change profile photo"
           >
@@ -121,6 +122,7 @@ export default function EditProfileScreen() {
 
         {error ? <Text style={[styles.error, { color: colors.error }]}>{error}</Text> : null}
         <Button title={saving ? 'Saving…' : 'Save changes'} onPress={handleSave} disabled={saving} />
+        {avatarPicker}
       </ScrollView>
     </SafeAreaView>
   );

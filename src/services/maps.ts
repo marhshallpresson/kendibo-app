@@ -3,8 +3,8 @@ import Constants from 'expo-constants';
 /**
  * Map placement (single decision point):
  * - Mapbox is used wherever a token is configured (EXPO_PUBLIC_MAPBOX_TOKEN).
- * - No token -> Google provider fallback (react-native-maps) on native,
- *   OpenStreetMap tiles on web. The app never breaks for missing config.
+ * - No token -> map screens render their fallback views; web always uses
+ *   OpenStreetMap/Leaflet tiles. The app never breaks for missing config.
  * - Expo Go has no Mapbox native code: Mapbox renders only in dev-client
  *   / production builds (isExpoGo() === false).
  */

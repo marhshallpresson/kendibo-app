@@ -2,20 +2,22 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
+import { MapView, Camera, MarkerView, ShapeSource, FillLayer, LineLayer } from '@rnmapbox/maps';
 import * as Location from 'expo-location';
-import { MapPin, Navigation } from 'lucide-react-native';
+import { MapPin, Navigation } from '@/components/ui/icons';
 import { Header, Button, Input } from '../../../components/ui';
 import { useAppTheme } from '../../_layout';
 import { fonts, spacing, radii } from '../../../constants/theme';
 import { useKycStore } from '../../../stores/kycStore';
 import { useLocationStore } from '../../../stores/locationStore';
 import { apiFetch } from '../../../services/api/client';
+import { initMapbox, circlePolygon } from '../../../services/mapbox';
 
-type Region = { latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number };
+type MapCenter = { latitude: number; longitude: number };
 type CoverageCity = { cityId: string; city: string; lat: number; lng: number; radiusKm: number };
 
-const MAP_DELTA = { latitudeDelta: 0.1, longitudeDelta: 0.1 };
+/** ~0.1° city-level delta equivalent in Mapbox zoom. */
+const ZOOM_CITY = 12;
 
 /** (0,0) means "no fix yet" — never a city default. */
 function isRealCoord(lat?: number | null, lng?: number | null): boolean {
@@ -34,14 +36,15 @@ export default function KycLocationScreen() {
   const router = useRouter();
   const { colors } = useAppTheme();
   const { location, setLocation } = useKycStore();
+  const hasMapbox = initMapbox();
 
-  const [region, setRegion] = useState<Region | null>(() =>
+  const [center, setCenter] = useState<MapCenter | null>(() =>
     isRealCoord(location.latitude, location.longitude)
-      ? { latitude: location.latitude, longitude: location.longitude, ...MAP_DELTA }
+      ? { latitude: location.latitude, longitude: location.longitude }
       : null,
   );
   const [radiusStr, setRadiusStr] = useState(location.radiusKm.toString());
-  const [locating, setLocating] = useState(region == null);
+  const [locating, setLocating] = useState(center == null);
   const [notice, setNotice] = useState('');
   const locatedRef = useRef(false);
 
@@ -55,7 +58,7 @@ export default function KycLocationScreen() {
         const { latitude, longitude } = pos.coords;
         if (isRealCoord(latitude, longitude)) {
           setLocating(false);
-          setRegion({ latitude, longitude, ...MAP_DELTA });
+          setCenter({ latitude, longitude });
           useLocationStore.getState().setCoordinates({ latitude, longitude });
           return;
         }
@@ -71,7 +74,7 @@ export default function KycLocationScreen() {
         : undefined;
       if (first) {
         setLocating(false);
-        setRegion({ latitude: first.lat, longitude: first.lng, ...MAP_DELTA });
+        setCenter({ latitude: first.lat, longitude: first.lng });
         return;
       }
     } catch (e) {
@@ -84,10 +87,10 @@ export default function KycLocationScreen() {
   useEffect(() => {
     if (locatedRef.current) return;
     locatedRef.current = true;
-    if (region) return;
+    if (center) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect -- resolve GPS/coverage on mount; every setState inside locateOnce runs after an await
     void locateOnce();
-  }, [region, locateOnce]);
+  }, [center, locateOnce]);
 
   const handleUseMyLocation = () => {
     setLocating(true);
@@ -96,10 +99,10 @@ export default function KycLocationScreen() {
   };
 
   const handleNext = () => {
-    if (!region) return;
+    if (!center) return;
     setLocation({
-      latitude: region.latitude,
-      longitude: region.longitude,
+      latitude: center.latitude,
+      longitude: center.longitude,
       radiusKm: parseFloat(radiusStr) || 10,
     });
     router.push('/(provider)/kyc/payout');
@@ -110,26 +113,46 @@ export default function KycLocationScreen() {
       <Header title="Service Area" onBack={() => router.back()} />
 
       <View style={styles.mapContainer}>
-        {region ? (
+        {center && hasMapbox ? (
           <MapView
             style={styles.map}
-            provider={PROVIDER_GOOGLE}
-            region={region}
-            onRegionChangeComplete={setRegion}
+            onMapIdle={(state) => {
+              const c = state?.properties?.center;
+              if (Array.isArray(c) && isRealCoord(c[1], c[0])) {
+                setCenter({ latitude: c[1], longitude: c[0] });
+              }
+            }}
           >
-            <Marker coordinate={{ latitude: region.latitude, longitude: region.longitude }} />
-            <Circle
-              center={{ latitude: region.latitude, longitude: region.longitude }}
-              radius={(parseFloat(radiusStr) || 10) * 1000} // km to meters
-              fillColor="rgba(84, 51, 235, 0.2)"
-              strokeColor="rgba(84, 51, 235, 0.5)"
+            <Camera
+              defaultSettings={{
+                centerCoordinate: [center.longitude, center.latitude],
+                zoomLevel: ZOOM_CITY,
+              }}
+              animationDuration={0}
             />
+            <MarkerView coordinate={[center.longitude, center.latitude]}>
+              <MapPin size={32} color={colors.primary} />
+            </MarkerView>
+            <ShapeSource
+              id="service-radius"
+              shape={circlePolygon(center.longitude, center.latitude, (parseFloat(radiusStr) || 10) * 1000)}
+            >
+              <FillLayer id="service-radius-fill" style={{ fillColor: 'rgba(84, 51, 235, 0.2)' }} />
+              <LineLayer
+                id="service-radius-line"
+                style={{ lineColor: 'rgba(84, 51, 235, 0.5)', lineWidth: 1.5 }}
+              />
+            </ShapeSource>
           </MapView>
         ) : (
           <View style={[styles.mapFallback, { backgroundColor: colors.primaryLight }]}>
             <MapPin size={40} color={colors.primary} />
             <Text style={{ color: colors.primary, fontFamily: fonts.bold, textAlign: 'center' }}>
-              {locating ? 'Finding your location…' : notice || 'Location unavailable'}
+              {!hasMapbox
+                ? 'Map unavailable'
+                : locating
+                  ? 'Finding your location…'
+                  : notice || 'Location unavailable'}
             </Text>
             <Button
               title="Use my current location"
@@ -171,7 +194,7 @@ export default function KycLocationScreen() {
           title="Continue to Payouts"
           onPress={handleNext}
           size="lg"
-          disabled={!region}
+          disabled={!center}
           style={styles.continueBtn}
         />
       </View>

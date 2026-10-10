@@ -29,7 +29,7 @@ import {
   ShieldCheck,
   Zap,
   Info,
-} from 'lucide-react-native';
+} from '@/components/ui/icons';
 import { Header, Button, Card, Badge, EmptyState } from '../../components/ui';
 import { useWalletStore, WalletTransaction } from '../../stores/walletStore';
 import { formatKoboToNaira, nairaToKobo } from '../../utils/currency';
