@@ -54,7 +54,16 @@
       ],
       "expo-secure-store",
       "expo-web-browser",
-      "@rnmapbox/maps"
+      "@rnmapbox/maps",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "buildArchs": ["arm64-v8a"],
+            "useLegacyPackaging": false
+          }
+        }
+      ]
     ],
     "ios": {
       "supportsTablet": true,
@@ -72,10 +81,21 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "kendibo.ng", "pathPrefix": "/" },
-            { "scheme": "https", "host": "kendibo-app.pxxl.click", "pathPrefix": "/" }
+            {
+              "scheme": "https",
+              "host": "kendibo.ng",
+              "pathPrefix": "/"
+            },
+            {
+              "scheme": "https",
+              "host": "kendibo-app.pxxl.click",
+              "pathPrefix": "/"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "permissions": [
