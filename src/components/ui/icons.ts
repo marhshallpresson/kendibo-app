@@ -2,26 +2,30 @@
 // (lucide-react-native re-exports ~15k icons), so every screen imports from
 // this module instead. Each deep import resolves via the package's
 // `exports` map (./icons/* -> one icon module + its types).
+//
+// lucide-react-native@1.52 renamed several icons (e.g. alert-circle ->
+// circle-alert). The import aliases below keep the historical export names
+// that ~140 call sites already use, so no consumer has to change.
 import ArrowDownLeft from 'lucide-react-native/icons/arrow-down-left';
 import ArrowLeft from 'lucide-react-native/icons/arrow-left';
 import ArrowRight from 'lucide-react-native/icons/arrow-right';
 import ArrowUpRight from 'lucide-react-native/icons/arrow-up-right';
-import AlertCircle from 'lucide-react-native/icons/alert-circle';
-import AlertTriangle from 'lucide-react-native/icons/alert-triangle';
+import CircleAlert from 'lucide-react-native/icons/circle-alert';
+import TriangleAlert from 'lucide-react-native/icons/triangle-alert';
 import Bell from 'lucide-react-native/icons/bell';
 import BellRing from 'lucide-react-native/icons/bell-ring';
 import Bookmark from 'lucide-react-native/icons/bookmark';
 import Briefcase from 'lucide-react-native/icons/briefcase';
 import Building from 'lucide-react-native/icons/building';
-import Building2 from 'lucide-react-native/icons/building-2';
+import BuildingComplex from 'lucide-react-native/icons/building-complex';
 import Calendar from 'lucide-react-native/icons/calendar';
 import CalendarCheck from 'lucide-react-native/icons/calendar-check';
 import CalendarDays from 'lucide-react-native/icons/calendar-days';
 import Camera from 'lucide-react-native/icons/camera';
 import Check from 'lucide-react-native/icons/check';
-import CheckCircle2 from 'lucide-react-native/icons/check-circle-2';
+import CircleCheckBig from 'lucide-react-native/icons/circle-check-big';
 import CheckCheck from 'lucide-react-native/icons/check-check';
-import CheckSquare from 'lucide-react-native/icons/check-square';
+import SquareCheck from 'lucide-react-native/icons/square-check';
 import ChevronDown from 'lucide-react-native/icons/chevron-down';
 import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import ChevronRight from 'lucide-react-native/icons/chevron-right';
@@ -36,7 +40,7 @@ import Cpu from 'lucide-react-native/icons/cpu';
 import CreditCard from 'lucide-react-native/icons/credit-card';
 import Delete from 'lucide-react-native/icons/delete';
 import Download from 'lucide-react-native/icons/download';
-import Edit2 from 'lucide-react-native/icons/edit-2';
+import Pencil from 'lucide-react-native/icons/pencil';
 import Eye from 'lucide-react-native/icons/eye';
 import EyeOff from 'lucide-react-native/icons/eye-off';
 import FileCheck from 'lucide-react-native/icons/file-check';
@@ -44,16 +48,16 @@ import FileText from 'lucide-react-native/icons/file-text';
 import FingerprintPattern from 'lucide-react-native/icons/fingerprint-pattern';
 import Gift from 'lucide-react-native/icons/gift';
 import Globe from 'lucide-react-native/icons/globe';
-import Grid from 'lucide-react-native/icons/grid';
+import Grid2x2 from 'lucide-react-native/icons/grid-2x2';
 import Hammer from 'lucide-react-native/icons/hammer';
 import Heart from 'lucide-react-native/icons/heart';
-import HelpCircle from 'lucide-react-native/icons/help-circle';
-import Home from 'lucide-react-native/icons/home';
+import CircleQuestionMark from 'lucide-react-native/icons/circle-question-mark';
+import House from 'lucide-react-native/icons/house';
 import Inbox from 'lucide-react-native/icons/inbox';
 import ImagePlus from 'lucide-react-native/icons/image-plus';
 import Info from 'lucide-react-native/icons/info';
 import LayoutDashboard from 'lucide-react-native/icons/layout-dashboard';
-import Loader2 from 'lucide-react-native/icons/loader-2';
+import LoaderCircle from 'lucide-react-native/icons/loader-circle';
 import Lock from 'lucide-react-native/icons/lock';
 import LogOut from 'lucide-react-native/icons/log-out';
 import Mail from 'lucide-react-native/icons/mail';
@@ -64,11 +68,10 @@ import Mic from 'lucide-react-native/icons/mic';
 import MicOff from 'lucide-react-native/icons/mic-off';
 import Minus from 'lucide-react-native/icons/minus';
 import Moon from 'lucide-react-native/icons/moon';
-import MoreHorizontal from 'lucide-react-native/icons/more-horizontal';
+import Ellipsis from 'lucide-react-native/icons/ellipsis';
 import Navigation from 'lucide-react-native/icons/navigation';
 import Paintbrush from 'lucide-react-native/icons/paintbrush';
 import Paperclip from 'lucide-react-native/icons/paperclip';
-import Pencil from 'lucide-react-native/icons/pencil';
 import Phone from 'lucide-react-native/icons/phone';
 import PhoneIncoming from 'lucide-react-native/icons/phone-incoming';
 import PhoneMissed from 'lucide-react-native/icons/phone-missed';
@@ -91,9 +94,9 @@ import Star from 'lucide-react-native/icons/star';
 import Store from 'lucide-react-native/icons/store';
 import Tag from 'lucide-react-native/icons/tag';
 import ThumbsUp from 'lucide-react-native/icons/thumbs-up';
-import Trash2 from 'lucide-react-native/icons/trash-2';
+import Trash from 'lucide-react-native/icons/trash';
 import Tv from 'lucide-react-native/icons/tv';
-import UploadCloud from 'lucide-react-native/icons/upload-cloud';
+import CloudUpload from 'lucide-react-native/icons/cloud-upload';
 import User from 'lucide-react-native/icons/user';
 import UserRound from 'lucide-react-native/icons/user-round';
 import Video from 'lucide-react-native/icons/video';
@@ -104,12 +107,12 @@ import Wallet from 'lucide-react-native/icons/wallet';
 import Wind from 'lucide-react-native/icons/wind';
 import Wrench from 'lucide-react-native/icons/wrench';
 import X from 'lucide-react-native/icons/x';
-import XCircle from 'lucide-react-native/icons/x-circle';
+import CircleX from 'lucide-react-native/icons/circle-x';
 import Zap from 'lucide-react-native/icons/zap';
 
 export {
-  AlertCircle,
-  AlertTriangle,
+  CircleAlert as AlertCircle,
+  TriangleAlert as AlertTriangle,
   ArrowDownLeft,
   ArrowLeft,
   ArrowRight,
@@ -119,15 +122,15 @@ export {
   Bookmark,
   Briefcase,
   Building,
-  Building2,
+  BuildingComplex as Building2,
   Calendar,
   CalendarCheck,
   CalendarDays,
   Camera,
   Check,
-  CheckCircle2,
+  CircleCheckBig as CheckCircle2,
   CheckCheck,
-  CheckSquare,
+  SquareCheck as CheckSquare,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -142,7 +145,7 @@ export {
   CreditCard,
   Delete,
   Download,
-  Edit2,
+  Pencil as Edit2,
   Eye,
   EyeOff,
   FileCheck,
@@ -150,16 +153,16 @@ export {
   FingerprintPattern,
   Gift,
   Globe,
-  Grid,
+  Grid2x2 as Grid,
   Hammer,
   Heart,
-  HelpCircle,
-  Home,
+  CircleQuestionMark as HelpCircle,
+  House as Home,
   ImagePlus,
   Inbox,
   Info,
   LayoutDashboard,
-  Loader2,
+  LoaderCircle as Loader2,
   Lock,
   LogOut,
   Mail,
@@ -170,7 +173,7 @@ export {
   MicOff,
   Minus,
   Moon,
-  MoreHorizontal,
+  Ellipsis as MoreHorizontal,
   Navigation,
   Paintbrush,
   Paperclip,
@@ -197,9 +200,9 @@ export {
   Store,
   Tag,
   ThumbsUp,
-  Trash2,
+  Trash as Trash2,
   Tv,
-  UploadCloud,
+  CloudUpload as UploadCloud,
   User,
   UserRound,
   Video,
@@ -210,6 +213,6 @@ export {
   Wind,
   Wrench,
   X,
-  XCircle,
+  CircleX as XCircle,
   Zap,
 };
