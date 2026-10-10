@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MapContainer, TileLayer, Marker, Circle, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import '../../../styles/leaflet-web.css';
 import { MapPin, Navigation } from '@/components/ui/icons';
 import { Header, Button, Input } from '../../../components/ui';
 import { useAppTheme } from '../../_layout';

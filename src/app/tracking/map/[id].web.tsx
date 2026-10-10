@@ -3,8 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
-// @ts-ignore
-import 'leaflet/dist/leaflet.css';
+import '../../../styles/leaflet-web.css';
 import { useBooking } from '../../../services/queryClient';
 import { useBookingTracking } from '../../../hooks/useBookingTracking';
 import { Header } from '../../../components/ui/Header';
