@@ -18,6 +18,7 @@ import {
   MapPin,
   ChevronDown,
   Zap,
+  Wallet,
 } from '@/components/ui/icons';
 import { Button } from '../../components/ui/Button';
 import { useAppTheme } from '../_layout';
@@ -25,10 +26,13 @@ import { radii, spacing, fonts, shadows } from '../../constants/theme';
 import { useCartStore } from '../../stores/cartStore';
 import { useLocationStore } from '../../stores/locationStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useWalletStore } from '../../stores/walletStore';
 import { formatKoboToNaira, calculateBookingTotalKobo } from '../../utils/currency';
 import { apiFetch, ApiError } from '../../services/api/client';
 
 const newPaymentRef = () => `PAY-KBD-${Date.now().toString(36)}`;
+
+type PayMethod = 'wallet' | 'bachs';
 
 /**
  * POST /v1/bookings contract (backend main.ts):
@@ -89,6 +93,12 @@ function describeFailure(err: unknown): string {
   if (err instanceof ApiError) {
     const hint = `${err.code ?? ''} ${err.message}`.toLowerCase();
     if (err.status === 401) return 'Your session has expired. Please sign in again.';
+    if (err.code === 'INSUFFICIENT_FUNDS' || hint.includes('insufficient')) {
+      return 'Your wallet balance is too low for this booking. Top up your wallet or use Bachs instead.';
+    }
+    if (err.code === 'BOOKING_NOT_PAYABLE' || hint.includes('not_payable')) {
+      return 'This booking can no longer be paid from your wallet. Refresh your bookings and try again.';
+    }
     if (err.code === 'AMOUNT_MISMATCH' || hint.includes('amount_mismatch')) {
       return 'The price changed before payment went through. Go back and refresh the order.';
     }
@@ -140,10 +150,12 @@ export default function CheckoutScreen() {
   const { items, clearCart } = useCartStore();
   const { currentAddress } = useLocationStore();
   const { user } = useAuthStore();
+  const { balanceKobo: walletBalanceKobo, refresh: refreshWallet } = useWalletStore();
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [payMethod, setPayMethod] = useState<PayMethod>('bachs');
   /**
    * Server-priced breakdown from POST /v1/pricing/quote. The backend charges
    * EXACTLY this number (it rejects any other amountKobo with AMOUNT_MISMATCH),
@@ -251,6 +263,14 @@ export default function CheckoutScreen() {
     () => `kbd_${Date.now().toString(36)}${Math.floor(Math.random() * 1e9).toString(36)}`,
   );
 
+  // Fresh wallet balance so the method picker can flag "insufficient funds"
+  // before the user taps Pay.
+  useEffect(() => {
+    refreshWallet();
+  }, [refreshWallet]);
+
+  const walletShortByKobo = Math.max(0, finalTotalKobo - walletBalanceKobo);
+
   const handlePay = async () => {
     // addressId is a UUID column — a GPS/map-pin placeholder ('gps'/'picked')
     // or a missing address makes the insert fail with a silent 400.
@@ -304,10 +324,52 @@ export default function CheckoutScreen() {
         },
       });
 
-      // 2. Initiate a real Bachs checkout session against that booking.
-      //    amountKobo MUST be the server's price snapshot — the backend
-      //    rejects any other value with AMOUNT_MISMATCH.
+      // The amount charged is the SERVER's price snapshot, never client math.
       const chargedKobo = Number(booking.priceKobo ?? finalTotalKobo);
+
+      // 2a. Wallet: debit the balance and settle in one server call.
+      //     The backend prices it (client amountKobo is ignored) and the same
+      //     idempotency key makes retries safe.
+      if (payMethod === 'wallet') {
+        const paid = await apiFetch<{ status: string; reference: string; amountKobo: number }>(
+          `/v1/bookings/${booking.id}/pay-with-wallet`,
+          {
+            method: 'POST',
+            idempotencyKey: bookingIdemKey,
+            body: {},
+          },
+        );
+
+        clearCart();
+        refreshWallet();
+
+        try {
+          const { watchup } = require('../../services/watchup') as typeof import('../../services/watchup');
+          watchup.track('booking.created', { bookingId: booking.id, method: 'WALLET' });
+          watchup.track('payment.completed', { bookingId: booking.id, method: 'WALLET' });
+        } catch {
+          /* telemetry must never break checkout */
+        }
+
+        setIsProcessing(false);
+        router.replace({
+          pathname: '/payment/success',
+          params: {
+            bookingId: booking.id,
+            bookingNumber: booking.bookingNumber ?? '',
+            paymentRef: paid.reference,
+            amountKobo: String(chargedKobo),
+            method: 'WALLET',
+            serviceName: targetServiceName,
+            paymentStatus: paid.status,
+          },
+        });
+        return;
+      }
+
+      // 2b. Bachs: initiate a real checkout session against that booking.
+      //     amountKobo MUST be the server's price snapshot — the backend
+      //     rejects any other value with AMOUNT_MISMATCH.
       const session = await apiFetch<{ checkoutUrl?: string; reference?: string; checkoutId?: string }>(
         `/v1/bookings/${booking.id}/payments`,
         {
@@ -526,7 +588,54 @@ export default function CheckoutScreen() {
               </View>
             )}
 
-            <View style={[styles.bachsRow, { backgroundColor: colors.surface, borderColor: colors.borderSubtle }]}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary, fontFamily: fonts.bold }]}>Payment Method</Text>
+            </View>
+
+            <Pressable
+              style={[
+                styles.bachsRow,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: payMethod === 'wallet' ? colors.primary : colors.borderSubtle,
+                },
+              ]}
+              onPress={() => setPayMethod('wallet')}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: payMethod === 'wallet' }}
+            >
+              <View style={[styles.bachsIcon, { backgroundColor: colors.primaryLight }]}>
+                <Wallet size={22} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.bachsTitle, { color: colors.textPrimary, fontFamily: fonts.bold }]}>Kendibo Wallet</Text>
+                <Text style={[styles.bachsSub, { color: walletShortByKobo > 0 ? colors.error : colors.textSecondary, fontFamily: fonts.regular }]}>
+                  {walletShortByKobo > 0
+                    ? `Balance ${formatKoboToNaira(walletBalanceKobo)} — short by ${formatKoboToNaira(walletShortByKobo)}`
+                    : `Balance ${formatKoboToNaira(walletBalanceKobo)} — instant, no card needed`}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.radioDot,
+                  { borderColor: payMethod === 'wallet' ? colors.primary : colors.borderSubtle, backgroundColor: payMethod === 'wallet' ? colors.primary : 'transparent' },
+                ]}
+              />
+            </Pressable>
+
+            <Pressable
+              style={[
+                styles.bachsRow,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: payMethod === 'bachs' ? colors.primary : colors.borderSubtle,
+                  marginTop: spacing.sm,
+                },
+              ]}
+              onPress={() => setPayMethod('bachs')}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: payMethod === 'bachs' }}
+            >
               <View style={[styles.bachsIcon, { backgroundColor: colors.primaryLight }]}>
                 <Zap size={22} color={colors.primary} />
               </View>
@@ -536,7 +645,13 @@ export default function CheckoutScreen() {
                   Debit card, bank transfer, or mobile money — secured by Bachs
                 </Text>
               </View>
-            </View>
+              <View
+                style={[
+                  styles.radioDot,
+                  { borderColor: payMethod === 'bachs' ? colors.primary : colors.borderSubtle, backgroundColor: payMethod === 'bachs' ? colors.primary : 'transparent' },
+                ]}
+              />
+            </Pressable>
 
             {!!(error ?? quoteError) && (
               <View style={[styles.errorBanner, { backgroundColor: colors.surface, borderColor: colors.error }]}>
@@ -558,10 +673,21 @@ export default function CheckoutScreen() {
 
             <View style={styles.actionSection}>
               <Button
-                title={hasVerifiedPrice ? `Pay ${formatKoboToNaira(finalTotalKobo)}` : 'Verifying price…'}
+                title={
+                  !hasVerifiedPrice
+                    ? 'Verifying price…'
+                    : payMethod === 'wallet' && walletShortByKobo > 0
+                      ? `Top up ${formatKoboToNaira(walletShortByKobo)} to continue`
+                      : `Pay ${formatKoboToNaira(finalTotalKobo)}`
+                }
                 onPress={handlePay}
                 loading={isProcessing}
-                disabled={isProcessing || displayItems.length === 0 || !hasVerifiedPrice}
+                disabled={
+                  isProcessing ||
+                  displayItems.length === 0 ||
+                  !hasVerifiedPrice ||
+                  (payMethod === 'wallet' && walletShortByKobo > 0)
+                }
                 size="lg"
                 variant="primary"
               />
@@ -632,6 +758,7 @@ const styles = StyleSheet.create({
   bachsIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   bachsTitle: { fontSize: 15 },
   bachsSub: { fontSize: 12, marginTop: 2 },
+  radioDot: { width: 20, height: 20, borderRadius: 10, borderWidth: 2 },
   errorBanner: {
     borderRadius: 12,
     borderWidth: 1,

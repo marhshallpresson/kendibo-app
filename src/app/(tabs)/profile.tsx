@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,15 +16,24 @@ import {
   ChevronRight,
   MoreHorizontal,
   Pencil,
+  Wallet,
 } from '@/components/ui/icons';
 import { useAppTheme } from '../_layout';
 import { spacing, fonts } from '../../constants/theme';
 import { useAuthStore } from '../../stores';
+import { useWalletStore } from '../../stores/walletStore';
+import { formatKoboToNaira } from '../../utils/currency';
 
 export default function ProfileScreen() {
   const { colors } = useAppTheme();
   const user = useAuthStore((state) => state.user);
   const isBiometricEnabled = useAuthStore((state) => state.isBiometricEnabled);
+  const balanceKobo = useWalletStore((state) => state.balanceKobo);
+  const refreshWallet = useWalletStore((state) => state.refresh);
+
+  useEffect(() => {
+    refreshWallet();
+  }, [refreshWallet]);
 
   const userName = user?.name || 'Hi there, Welcome';
   const userEmail = user?.email || 'Sign in';
@@ -112,10 +121,23 @@ export default function ProfileScreen() {
             onPress: () => router.push('/settings/notifications'),
           })}
           {renderRow({
+            icon: <Wallet size={22} color={colors.primary} />,
+            label: 'Kendibo Wallet',
+            right: (
+              <View style={styles.walletRight}>
+                <Text style={[styles.walletBalance, { color: colors.primary }]}>
+                  {formatKoboToNaira(balanceKobo)}
+                </Text>
+                <ChevronRight size={20} color={colors.textPrimary} />
+              </View>
+            ),
+            onPress: () => router.push('/wallet'),
+          })}
+          {renderRow({
             icon: <CreditCard size={22} color={colors.textPrimary} />,
             label: 'Payment',
             onPress: () =>
-              Alert.alert('Payment Methods', 'Debit cards and bank transfer via Bachs are enabled for Nigeria.'),
+              Alert.alert('Payment Methods', 'Pay with your Kendibo Wallet balance, or debit card / bank transfer via Bachs.'),
           })}
           {renderRow({
             icon: <ShieldCheck size={22} color={colors.textPrimary} />,
@@ -225,5 +247,14 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     textAlign: 'center',
     marginTop: spacing.lg,
+  },
+  walletRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  walletBalance: {
+    fontSize: 14,
+    fontFamily: fonts.semiBold,
   },
 });
